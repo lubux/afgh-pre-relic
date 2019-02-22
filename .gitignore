@@ -57,3 +57,6 @@ bin/*
 Makefile
 CMakeCache.txt
 CMakeFiles
+.idea
+cmake-build-debug
+*.cbp
