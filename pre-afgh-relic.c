@@ -42,7 +42,6 @@
 int mod_inverse(bn_t res, bn_t a, bn_t m)
 {
     bn_t tempGcd, temp;
-    dig_t one = 1;
     int result = STS_ERR;
 
     bn_null(tempGcd);
@@ -82,6 +81,7 @@ int pre_init() {
         return STS_ERR;
     }
     pc_param_print();
+    return STS_OK;
 }
 
 int pre_deinit() {
@@ -660,6 +660,7 @@ int encode_cipher(char* buff, int size, pre_ciphertext_t cipher){
         cur_ptr += ENCODING_SIZE;
         gt_write_bin((uint8_t*) cur_ptr, temp_size, cipher->C2_GT, 1);
     }
+    return STS_OK;
 }
 int decode_cipher(pre_ciphertext_t cipher, char* buff, int size){
     int temp_size, dyn_size = 1;
