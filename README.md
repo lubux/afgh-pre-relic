@@ -27,9 +27,14 @@ Cmake is required to compile the code.
 cmake .
 make
 ```
-The `main.cpp` file contains the basic test code, which shows how to use the library. 
+The `main.cpp` file contains the basic test code and shows how to use the library. 
 ```
-./bin/pre-relic
+./bin/relic-pre
+```
+
+The `benchmark_pre.cpp` file contains the simple benchmark code. 
+```
+./bin/relic_pre_re_enc_benchmark
 ```
 
 ### Experimental Code
