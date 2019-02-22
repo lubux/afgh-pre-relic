@@ -134,9 +134,9 @@ int decode_token(pre_re_token_t token, char* buff, int size);
  * The representation of a PRE ciphertext.
  */
 struct pre_ciphertext_s {
-    gt_t C1;							// cyphertext part 1
-    g1_t C2_G1;							// cyphertext part 2 in G1
-    gt_t C2_GT;							// cyphertext part 2 in GT
+    gt_t C1;							// ciphertext part 1
+    g1_t C2_G1;							// ciphertext part 2 in G1
+    gt_t C2_GT;							// ciphertext part 2 in GT
     char group;							// flag to indicate the working group
 };
 typedef struct pre_ciphertext_s *pre_rel_ciphertext_ptr;
@@ -180,13 +180,13 @@ int pre_init();
 int pre_deinit();
 
 /**
- * Computes a random gt element for encrytion
+ * Computes a random gt element for encryption
  * @return STS_OK if ok else STS_ERR
  */
 int pre_rand_message(gt_t msg);
 
 /**
- * Maps a gt message to a encryption key
+ * Maps a gt message to an encryption key
  * @return STS_OK if ok else STS_ERR
  */
 int pre_map_to_key(uint8_t *key, int key_len, gt_t msg);
@@ -262,7 +262,7 @@ int pre_decrypt(gt_t res, pre_keys_t keys, pre_ciphertext_t ciphertext);
 
 
 /**
- * Generates a re-encrpytion token from A to B.
+ * Generates a re-encryption token from A to B.
  * @param token the token from (A->B)
  * @param keys the PRE key of A
  * @param pk_2_b the public part of the PRE key of B.

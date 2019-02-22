@@ -211,9 +211,8 @@ int pre_generate_keys(pre_keys_t keys) {
 
         g1_get_ord(ord);
 
-        /* random generator random????*/
         g1_get_gen(keys->g);
-        g2_get_gen(keys->g2); // If symmetric, these two generators should be the same
+        g2_get_gen(keys->g2);
 
         /* define a random value as secret key and compute the public key as pk = g^sk*/
         bn_rand_mod(keys->sk, ord);
@@ -346,6 +345,7 @@ int pre_encrypt(pre_ciphertext_t ciphertext, pre_keys_t keys, gt_t plaintext) {
         while(bn_is_zero(r)) {
             bn_rand_mod(r, ord);
         }
+
         /* Z^r */
         gt_exp(ciphertext->C1, keys->Z, r);
 
