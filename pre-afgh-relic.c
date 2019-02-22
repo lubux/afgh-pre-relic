@@ -34,7 +34,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "pre-hom.h"
+#include "pre-afgh-relic.h"
 #include <limits.h>
 
 

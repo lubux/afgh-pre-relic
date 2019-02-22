@@ -38,7 +38,7 @@
 #include <chrono>
 
 extern "C" {
-#include "pre-hom.h"
+#include "pre-afgh-relic.h"
 }
 
 using namespace std::chrono;
