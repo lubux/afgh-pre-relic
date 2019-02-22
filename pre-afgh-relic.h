@@ -38,15 +38,14 @@
 #define PRE_REL_ENC_H_
 
 #include <assert.h>
-#include <relic/relic_types.h>
 #include <relic/relic_bench.h>
 #include <relic/relic_core.h>
+#include <relic/relic_types.h>
 
-#include <relic/relic_md.h>
 #include <relic/relic_bn.h>
 #include <relic/relic_ec.h>
+#include <relic/relic_md.h>
 #include <relic/relic_pc.h>
-
 
 #define PRE_REL_KEYS_TYPE_SECRET 's'
 #define PRE_REL_KEYS_TYPE_ONLY_PUBLIC 'p'
@@ -56,16 +55,15 @@
 
 #define ENCODING_SIZE 2;
 
-
 /**
  *  Represents a PRE Key
  */
 struct pre_keys_s {
-    bn_t sk;							// secret factor a
-    gt_t Z;								// Z = e(g,g)
-    g1_t g, pk;							// generator, public key g^a
-    g2_t g2, pk_2;		 	// generator, public key g_2^a, re-encryption token
-    char type;							// flag to indicate the presence of the secret key
+  bn_t sk;       // secret factor a
+  gt_t Z;        // Z = e(g,g)
+  g1_t g, pk;    // generator, public key g^a
+  g2_t g2, pk_2; // generator, public key g_2^a, re-encryption token
+  char type;     // flag to indicate the presence of the secret key
 };
 typedef struct pre_keys_s *pre_rel_keys_ptr;
 typedef struct pre_keys_s pre_keys_t[1];
@@ -84,7 +82,7 @@ int get_encoded_key_size(pre_keys_t key);
  * @param key the key
  * @return STS_OK if ok else STS_ERR
  */
-int encode_key(char* buff, int size, pre_keys_t key);
+int encode_key(char *buff, int size, pre_keys_t key);
 
 /**
  * Decodes the encoded key from a buffer.
@@ -93,13 +91,13 @@ int encode_key(char* buff, int size, pre_keys_t key);
  * @param size the buffer size of the encoded key
  * @return STS_OK if ok else STS_ERR
  */
-int decode_key(pre_keys_t key, char* buff, int size);
+int decode_key(pre_keys_t key, char *buff, int size);
 
 /**
  * Represents a PRE re-encryption token
  */
 struct pre_re_token_s {
-    g2_t re_token;
+  g2_t re_token;
 };
 typedef struct pre_re_token_s *pre_re_token_ptr;
 typedef struct pre_re_token_s pre_re_token_t[1];
@@ -111,7 +109,6 @@ typedef struct pre_re_token_s pre_re_token_t[1];
  */
 int get_encoded_token_size(pre_re_token_t token);
 
-
 /**
  * Encodes the given token as a byte array.
  * @param buff the allocated buffer for the encoding
@@ -119,7 +116,7 @@ int get_encoded_token_size(pre_re_token_t token);
  * @param token the token
  * @return STS_OK if ok else STS_ERR
  */
-int encode_token(char* buff, int size, pre_re_token_t token);
+int encode_token(char *buff, int size, pre_re_token_t token);
 
 /**
  * Decodes the encoded token from a byte buffer.
@@ -128,16 +125,16 @@ int encode_token(char* buff, int size, pre_re_token_t token);
  * @param size the buffer size of the encoded token
  * @return STS_OK if ok else STS_ERR
  */
-int decode_token(pre_re_token_t token, char* buff, int size);
+int decode_token(pre_re_token_t token, char *buff, int size);
 
 /**
  * The representation of a PRE ciphertext.
  */
 struct pre_ciphertext_s {
-    gt_t C1;							// ciphertext part 1
-    g1_t C2_G1;							// ciphertext part 2 in G1
-    gt_t C2_GT;							// ciphertext part 2 in GT
-    char group;							// flag to indicate the working group
+  gt_t C1;    // ciphertext part 1
+  g1_t C2_G1; // ciphertext part 2 in G1
+  gt_t C2_GT; // ciphertext part 2 in GT
+  char group; // flag to indicate the working group
 };
 typedef struct pre_ciphertext_s *pre_rel_ciphertext_ptr;
 typedef struct pre_ciphertext_s pre_ciphertext_t[1];
@@ -156,7 +153,7 @@ int get_encoded_cipher_size(pre_ciphertext_t cipher);
  * @param cipher the ciphertext
  * @return STS_OK if ok else STS_ERR
  */
-int encode_cipher(char* buff, int size, pre_ciphertext_t cipher);
+int encode_cipher(char *buff, int size, pre_ciphertext_t cipher);
 
 /**
  * Decodes the encoded ciphertext from a byte buffer.
@@ -165,7 +162,7 @@ int encode_cipher(char* buff, int size, pre_ciphertext_t cipher);
  * @param size the buffer size of the encoded ciphertext
  * @return STS_OK if ok else STS_ERR
  */
-int decode_cipher(pre_ciphertext_t cipher, char* buff, int size);
+int decode_cipher(pre_ciphertext_t cipher, char *buff, int size);
 
 /**
  * Inits the PRE libray (HAS TO BE CALLED BEFORE USE!)
@@ -251,15 +248,16 @@ int pre_generate_secret_key(pre_keys_t keys);
 int pre_encrypt(pre_ciphertext_t ciphertext, pre_keys_t keys, gt_t plaintext);
 
 /**
- * Decrypts a PRE ciphertext with the given key and maps it back to the plaintext integer.
+ * Decrypts a PRE ciphertext with the given key and maps it back to the
+ * plaintext integer.
  * @param res a pointer to the resulting integer.
  * @param keys a PRE key
  * @param ciphertext the input ciphertext
- * @param use_bsgs 0 for brutforce, else for baby-step-giant-step used for the mapping
+ * @param use_bsgs 0 for brutforce, else for baby-step-giant-step used for the
+ * mapping
  * @return STS_OK if ok else STS_ERR
  */
 int pre_decrypt(gt_t res, pre_keys_t keys, pre_ciphertext_t ciphertext);
-
 
 /**
  * Generates a re-encryption token from A to B.
@@ -277,7 +275,7 @@ int pre_generate_re_token(pre_re_token_t token, pre_keys_t keys, g2_t pk_2_b);
  * @param ciphertext th input ciphertext
  * @return  STS_OK if ok else STS_ERR
  */
-int pre_re_apply(pre_re_token_t keys, pre_ciphertext_t res, pre_ciphertext_t ciphertext);
-
+int pre_re_apply(pre_re_token_t keys, pre_ciphertext_t res,
+                 pre_ciphertext_t ciphertext);
 
 #endif
