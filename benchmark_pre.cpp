@@ -1,9 +1,10 @@
 /*
- * Copyright (c) 2016, Institute for Pervasive Computing, ETH Zurich.
+ * Copyright (c) 2019, Institute for Pervasive Computing, ETH Zurich.
  * All rights reserved.
  *
  * Author:
- *       Lukas Burkhalter <lubu@student.ethz.ch>
+ *       Edward Oakes <eoakes@berkeley.edu>
+ *       Lukas Burkhalter <lubu@inf.ethz.ch>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions

@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2016, Institute for Pervasive Computing, ETH Zurich.
+ * Copyright (c) 2019, Institute for Pervasive Computing, ETH Zurich.
  * All rights reserved.
  *
  * Author:
- *       Lukas Burkhalter <lubu@student.ethz.ch>
+ *       Lukas Burkhalter <lubu@inf.ethz.ch>
  *       Hossein Shafagh <shafagh@inf.ethz.ch>
  *       Pascal Fischli <fischlip@student.ethz.ch>
  *
