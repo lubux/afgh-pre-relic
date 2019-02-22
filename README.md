@@ -4,7 +4,7 @@ Implements the AFGH proxy re-encryption scheme as presented in:
 
 - [link](https://eprint.iacr.org/2005/028.pdf) Ateniese et al. Improved Proxy Reencryption Schemes with Applications to Secure Distributed Storage. In NDSS, 2006.
 
-This code is ported from the additive homomorphic PRE in [Pilatus](http://www.vs.inf.ethz.ch/publ/papers/mshafagh_SenSys17_Pilatus.pdf).
+This code is ported from the additive homomorphic PRE in [Pilatus](http://www.vs.inf.ethz.ch/publ/papers/mshafagh_SenSys17_Pilatus.pdf) [Code](https://github.com/Talos-crypto/Pilatus).
 The implementation uses the [relic toolkit](https://github.com/relic-toolkit/relic) as a backend for the underlying pairing-based crypto.
 
 ### Install Relic
