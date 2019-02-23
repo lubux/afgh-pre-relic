@@ -94,6 +94,31 @@ int encode_key(char *buff, int size, pre_keys_t key);
 int decode_key(pre_keys_t key, char *buff, int size);
 
 /**
+ * Returns the encoded msg size of the provided msg
+ * @param msg
+ * @return the size in bytes of the encoded msg
+ */
+int get_encoded_msg_size(gt_t msg);
+
+/**
+ * Encodes the given msg as a byte array.
+ * @param buff the allocated buffer for the encoding
+ * @param size the allocated buffer size
+ * @param msg the msg
+ * @return STS_OK if ok else STS_ERR
+ */
+int encode_msg(char *buff, int size, gt_t msg);
+
+/**
+ * Decodes the encoded msg from a buffer.
+ * @param msg the msg
+ * @param buff the buffer containing the encoded msg
+ * @param size the buffer size of the encoded msg
+ * @return STS_OK if ok else STS_ERR
+ */
+int decode_msg(gt_t msg, char *buff, int size);
+
+/**
  * Represents a PRE re-encryption token
  */
 struct pre_re_token_s {

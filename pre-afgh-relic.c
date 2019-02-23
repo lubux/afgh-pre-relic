@@ -460,6 +460,25 @@ int pre_re_apply(pre_re_token_t token, pre_ciphertext_t res,
   return result;
 }
 
+int get_encoded_msg_size(gt_t msg) {
+  return gt_size_bin(msg, 1);
+}
+
+int encode_msg(char *buff, int size, gt_t msg) {
+  int size_type = get_encoded_msg_size(msg);
+  if (size < size_type) {
+    return STS_ERR;
+  }
+  gt_write_bin((uint8_t *)buff, size_type, msg, 1);
+  return STS_OK;
+}
+
+int decode_msg(gt_t msg, char *buff, int size) {
+  gt_new(msg);
+  gt_read_bin(msg, (uint8_t *)buff, size);
+  return STS_OK;
+}
+
 int get_encoded_token_size(pre_re_token_t token) {
   return g2_size_bin(token->re_token, 1);
 }

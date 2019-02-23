@@ -13,6 +13,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin )
 
 set(SOURCE_FILES main.cpp pre-afgh-relic.c pre-afgh-relic.h)
 add_executable(relic_pre ${SOURCE_FILES})
+add_library(pre-afgh-relic SHARED pre-afgh-relic.c pre-afgh-relic.h)
 
 set(SOURCE_FILES benchmark_pre.cpp pre-afgh-relic.c pre-afgh-relic.h)
 add_executable(relic_pre_re_enc_benchmark ${SOURCE_FILES})

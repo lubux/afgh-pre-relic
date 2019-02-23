@@ -101,16 +101,33 @@ int basic_test() {
 }
 
 void encode_decode_test() {
-  gt_t msg1, msg2;
+  gt_t msg1, msg2, msg1_decoded;
   pre_keys_t alice_key, bob_key, alice_key_decoded;
   pre_ciphertext_t alice_cipher1, alice_cipher1_decode, bob_re, bob_re_decode;
   pre_re_token_t token_to_bob, token_to_bob_decode;
   gt_t res;
   char *buff;
-  int key_size;
+  int key_size, msg_size;
 
   pre_rand_message(msg1);
   pre_rand_message(msg2);
+  msg_size = get_encoded_msg_size(msg1);
+  buff = (char *)malloc((size_t)msg_size);
+  if (!encode_msg(buff, msg_size, msg1) == STS_OK) {
+    std::cout << "Message encode error!" << std::endl;
+    exit(1);
+  }
+  if (!decode_msg(msg1_decoded, buff, msg_size) == STS_OK) {
+    std::cout << "Message decode error!" << std::endl;
+    exit(1);
+  }
+  free(buff);
+
+  if (gt_cmp(msg1, msg1_decoded) == CMP_EQ) {
+    std::cout << "Decode Message OK!" << std::endl;
+  } else {
+    std::cout << "Decode Message Failed!" << std::endl;
+  }
 
   pre_generate_keys(alice_key);
   pre_generate_keys(bob_key);
