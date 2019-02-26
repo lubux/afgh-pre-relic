@@ -2,13 +2,6 @@
 
 #include "pre-afgh-relic.h"
 
-/*
-int encoded_key_size = 721;
-int encoded_msg_size = 384;
-int encoded_token_size = 1;
-int encoded_cipher_size = 630;
-*/
-
 void dump_hex(const char* label, char* bytes, int n) {
     printf("%s:\n", label);
     for (int i = 0; i < n; i++) {
@@ -28,17 +21,18 @@ void* error(const char* context, const char* failure) {
 static PyObject* py_msg_to_ints(PyObject* self, PyObject* args)
 {
     const char* err_context = "py_msg_to_ints";
-    char msg_bytes[384];
+    Py_buffer msg_buf;
     gt_t msg;
     uint8_t ret[16];
 
-    if (!PyArg_ParseTuple(args, "y*", &msg_bytes)) {
+    if (!PyArg_ParseTuple(args, "y*", &msg_buf)) {
         return error(err_context, "parse args");
     }
 
-    if (decode_msg(msg, msg_bytes, 384) != STS_OK) {
+    if (decode_msg(msg, msg_buf.buf, (int)msg_buf.len) != STS_OK) {
         return error(err_context, "decode message");
     }
+    dump_hex("message in msg_to_ints", msg_buf.buf, (int)msg_buf.len);
     if (pre_map_to_key(ret, 16, msg) != STS_OK) {
         return error(err_context, "map message to integers");
     }
@@ -80,21 +74,19 @@ static PyObject* py_generate_msg(PyObject* self)
 static PyObject* py_generate_token(PyObject* self, PyObject* args)
 {
     const char* err_context = "py_generate_token";
-    char from_key_bytes[721], to_key_bytes[721];
+    Py_buffer from_key_buf, to_key_buf;
     pre_keys_t from_key, to_key;
     pre_re_token_t token;
     int encoded_token_size;
 
-    if (!PyArg_ParseTuple(args, "y*y*", &from_key_bytes, &to_key_bytes)) {
+    if (!PyArg_ParseTuple(args, "y*y*", &from_key_buf, &to_key_buf)) {
         return error(err_context, "parse_arguments");
     }
 
-    dump_hex("from_key in generate_token", from_key_bytes, 721);
-
-    if (decode_key(from_key, from_key_bytes, 721) != STS_OK) {
+    if (decode_key(from_key, from_key_buf.buf, (int)from_key_buf.len) != STS_OK) {
         return error(err_context, "decode 'from' key");
     }
-    if (decode_key(to_key, to_key_bytes, 721) != STS_OK) {
+    if (decode_key(to_key, to_key_buf.buf, (int)to_key_buf.len) != STS_OK) {
         return error(err_context, "decode 'to' key");
     }
     if (pre_generate_re_token(token, from_key, to_key->pk_2) != STS_OK) {
@@ -113,19 +105,19 @@ static PyObject* py_generate_token(PyObject* self, PyObject* args)
 static PyObject* py_apply_token(PyObject* self, PyObject* args)
 {
     const char* err_context = "py_apply_token";
-    char token_bytes[1], in_cipher_bytes[384];
+    Py_buffer token_buf, in_cipher_buf;
     pre_re_token_t token;
     pre_ciphertext_t in_cipher, out_cipher;
     int encoded_cipher_size;
 
-    if (!PyArg_ParseTuple(args, "y*y*", &token_bytes, &in_cipher_bytes)) {
+    if (!PyArg_ParseTuple(args, "y*y*", &token_buf, &in_cipher_buf)) {
         return error(err_context, "parse arguments");
     }
 
-    if (decode_token(token, token_bytes, 1) != STS_OK) {
+    if (decode_token(token, token_buf.buf, (int)token_buf.len) != STS_OK) {
         return error(err_context, "decode token");
     }
-    if (decode_cipher(in_cipher, in_cipher_bytes, 384) != STS_OK) {
+    if (decode_cipher(in_cipher, in_cipher_buf.buf, (int)in_cipher_buf.len) != STS_OK) {
         return error(err_context, "decode ciphertext");
     }
 
@@ -145,20 +137,20 @@ static PyObject* py_apply_token(PyObject* self, PyObject* args)
 static PyObject* py_decrypt(PyObject* self, PyObject* args)
 {
     const char* err_context = "py_decrypt";
-    char key_bytes[721], cipher_bytes[630];
+    Py_buffer key_buf, cipher_buf;
     gt_t msg;
     pre_keys_t key;
     pre_ciphertext_t cipher;
     int encoded_msg_size;
 
-    if (!PyArg_ParseTuple(args, "y*y*", &key_bytes, &cipher_bytes)) {
+    if (!PyArg_ParseTuple(args, "y*y*", &key_buf, &cipher_buf)) {
         return error(err_context, "parse arguments");
     }
 
-    if (decode_key(key, key_bytes, 721) != STS_OK) {
+    if (decode_key(key, key_buf.buf, (int)key_buf.len) != STS_OK) {
         return error(err_context, "decode key");
     }
-    if (decode_cipher(cipher, cipher_bytes, 384) != STS_OK) {
+    if (decode_cipher(cipher, cipher_buf.buf, (int)cipher_buf.len) != STS_OK) {
         return error(err_context, "decode ciphertext");
     }
 
@@ -178,20 +170,20 @@ static PyObject* py_decrypt(PyObject* self, PyObject* args)
 static PyObject* py_encrypt(PyObject* self, PyObject* args)
 {
     const char* err_context = "py_encrypt";
-    char key_bytes[721], msg_bytes[384];
+    Py_buffer key_buf, msg_buf;
     gt_t msg;
     pre_keys_t key;
     pre_ciphertext_t cipher;
     int encoded_cipher_size;
 
-    if (!PyArg_ParseTuple(args, "y*y*", &key_bytes, &msg_bytes)) {
+    if (!PyArg_ParseTuple(args, "y*y*", &key_buf, &msg_buf)) {
         return error(err_context, "parse arguments");
     }
 
-    if(decode_key(key, key_bytes, 721) != STS_OK) {
+    if(decode_key(key, key_buf.buf, (int)key_buf.len) != STS_OK) {
         return error(err_context, "decode key");
     }
-    if (decode_msg(msg, msg_bytes, 384) != STS_OK) {
+    if (decode_msg(msg, msg_buf.buf, (int)msg_buf.len) != STS_OK) {
         return error(err_context, "decode message");
     }
 
@@ -225,7 +217,6 @@ static PyObject* py_generate_key(PyObject* self)
         return error(err_context, "encode key");
     }
 
-    dump_hex("key in generate_key", encoded_key, encoded_key_size);
     return Py_BuildValue("y#", encoded_key, encoded_key_size);
 }
 

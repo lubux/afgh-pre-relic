@@ -28,4 +28,5 @@ print("msg3:\n%s\n" % msg3.hex()[:16])
 ints3 = pre.msg_to_ints(msg3)
 print("ints3:\n%s\n" % ints3)
 
+assert msg1 == msg2 == msg3
 assert ints1 == ints2 == ints3
