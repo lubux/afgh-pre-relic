@@ -1,9 +1,8 @@
 from distutils.core import setup, Extension
 
-pre = Extension('pre',
-                include_dirs = ['/usr/local/include'],
+pypre = Extension('pypre',
                 libraries = ['relic'],
-                library_dirs = ['/usr/local/lib'],
+                runtime_library_dirs = ['/usr/local/lib', '/opt/lib'],
                 sources = ['pre_python.c', '../pre/pre-afgh-relic.c'])
 
-setup(ext_modules=[pre])
+setup(name='pypre', ext_modules=[pypre])

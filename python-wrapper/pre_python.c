@@ -231,18 +231,19 @@ static PyMethodDef pre_methods[] = {
     {"apply_token", (PyCFunction)py_apply_token, METH_VARARGS, NULL},
     {"generate_msg", (PyCFunction)py_generate_msg, METH_NOARGS, NULL},
     {"msg_to_ints", (PyCFunction)py_msg_to_ints, METH_VARARGS, NULL},
+    {NULL, NULL, 0, NULL}
 };
 
 static struct PyModuleDef preDef =
 {
     PyModuleDef_HEAD_INIT,
-    "pre", /* name of module */
+    "pypre", /* name of module */
     NULL,  /* module documentation, may be NULL */
     -1,    /* size of per-interpreter state of the module, or -1 if the module keeps state in global variables. */
     pre_methods
 };
 
-PyMODINIT_FUNC PyInit_pre(void)
+PyMODINIT_FUNC PyInit_pypre(void)
 {
     int old_stdout, devnull;
 

@@ -38,7 +38,6 @@
 #define PRE_REL_ENC_H_
 
 #include <assert.h>
-#include <relic/relic_bench.h>
 #include <relic/relic_core.h>
 #include <relic/relic_types.h>
 
