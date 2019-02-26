@@ -32,7 +32,6 @@ static PyObject* py_msg_to_ints(PyObject* self, PyObject* args)
     if (decode_msg(msg, msg_buf.buf, (int)msg_buf.len) != STS_OK) {
         return error(err_context, "decode message");
     }
-    dump_hex("message in msg_to_ints", msg_buf.buf, (int)msg_buf.len);
     if (pre_map_to_key(ret, 16, msg) != STS_OK) {
         return error(err_context, "map message to integers");
     }
@@ -131,7 +130,7 @@ static PyObject* py_apply_token(PyObject* self, PyObject* args)
         return error(err_context, "encode ciphertext");
     }
 
-    return Py_BuildValue("y#", encoded_cipher_size);
+    return Py_BuildValue("y#", out_cipher_bytes, encoded_cipher_size);
 }
 
 static PyObject* py_decrypt(PyObject* self, PyObject* args)

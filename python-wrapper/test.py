@@ -20,10 +20,10 @@ print("msg2:\n%s\n" % msg2.hex()[:16])
 ints2 = pre.msg_to_ints(msg2)
 print("ints2:\n%s\n" % ints2)
 
-re_cipher = pre.apply_token(token, msg)
+re_cipher = pre.apply_token(token, cipher)
 print("re_cipher:\n%s\n" % re_cipher.hex()[:16])
 
-msg3 = pre.decrypt(bob, cipher)
+msg3 = pre.decrypt(bob, re_cipher)
 print("msg3:\n%s\n" % msg3.hex()[:16])
 ints3 = pre.msg_to_ints(msg3)
 print("ints3:\n%s\n" % ints3)

@@ -133,6 +133,7 @@ int pre_map_to_key(uint8_t *key, int key_len, gt_t msg) {
     }
     gt_write_bin(buffer, (int)buff_size, msg, 1);
     md_kdf2(key, key_len, buffer, (int)buff_size);
+    result = STS_OK;
   }
   CATCH_ANY { result = STS_ERR; }
   FINALLY {
@@ -416,6 +417,8 @@ int pre_decrypt(gt_t res, pre_keys_t keys, pre_ciphertext_t ciphertext) {
     /* C1 / e(C2, g^a^-1) or C1/C2^(1/a) */
     gt_inv(t0, res);
     gt_mul(res, ciphertext->C1, t0);
+
+    result = STS_OK;
   }
   CATCH_ANY { result = STS_ERR; }
   FINALLY {
