@@ -2,6 +2,7 @@
 
 #include "pre-afgh-relic.h"
 
+// convenience function to dump bytes as hex (same format as Python __str__)
 void dump_hex(const char* label, char* bytes, int n) {
     printf("%s:\n", label);
     for (int i = 0; i < n; i++) {
