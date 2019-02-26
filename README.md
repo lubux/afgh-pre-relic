@@ -25,7 +25,6 @@ or
 ### Compile 
 Cmake is required to compile the code.
 ```
-cmake .
 make
 ```
 The `main.cpp` file contains the basic test code and shows how to use the library. 

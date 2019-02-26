@@ -53,10 +53,6 @@ dkms.conf
 
 # Build artifacts
 bin/*
-*.cmake
-/Makefile
-CMakeCache.txt
-CMakeFiles
+lib/*
 .idea
-cmake-build-debug
 *.cbp
