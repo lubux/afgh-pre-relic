@@ -54,7 +54,7 @@ dkms.conf
 # Build artifacts
 bin/*
 *.cmake
-Makefile
+/Makefile
 CMakeCache.txt
 CMakeFiles
 .idea
