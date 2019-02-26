@@ -1,5 +1,8 @@
 #include <Python.h>
 
+#include <sys/types.h>
+#include <fcntl.h>
+
 #include "pre-afgh-relic.h"
 
 // convenience function to dump bytes as hex (same format as Python __str__)
@@ -241,6 +244,20 @@ static struct PyModuleDef preDef =
 
 PyMODINIT_FUNC PyInit_pre(void)
 {
-    pre_init();
+    int old_stdout, devnull;
+
+    // suppress relic output
+    fflush(stdout);
+    old_stdout = dup(1);
+    if (!(devnull = open("/dev/null", O_WRONLY))) {
+        return error("pyinit_pre", "open /dev/null");
+    }
+    dup2(devnull, 1);
+    close(devnull);
+    pre_init(); // initialize proxy re-encryption library
+    fflush(stdout);
+    dup2(old_stdout, 1);
+    close(old_stdout);
+
     return PyModule_Create(&preDef);
 }

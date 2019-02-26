@@ -1,32 +1,97 @@
 import pre
+import unittest
 
-alice = pre.generate_key()
-print("Alice key:\n%s\n" % alice.hex()[:16])
-bob = pre.generate_key()
-print("Bob key:\n%s\n" % bob.hex()[:16])
-token = pre.generate_token(alice, bob)
-print("token:\n%s\n" % token.hex()[:16])
+class TestGenerationMethods(unittest.TestCase):
+    def test_generate_key(self):
+        self.assertIsNotNone(pre.generate_key())
+        self.assertNotEqual(pre.generate_key(), pre.generate_key())
 
-msg1 = pre.generate_msg()
-print("msg1:\n%s\n" % msg1.hex()[:16])
-ints1 = pre.msg_to_ints(msg1)
-print("ints1:\n%s\n" % ints1)
+    def test_generate_token(self):
+        alice = pre.generate_key()
+        self.assertIsNotNone(alice)
+        bob = pre.generate_key()
+        self.assertIsNotNone(bob)
 
-cipher = pre.encrypt(alice, msg1)
-print("cipher:\n%s\n" % cipher.hex()[:16])
+        token1 = pre.generate_token(alice, bob)
+        self.assertIsNotNone(token1)
+        token2 = pre.generate_token(alice, bob)
+        self.assertIsNotNone(token2)
+        token3 = pre.generate_token(bob, alice)
+        self.assertIsNotNone(token3)
 
-msg2 = pre.decrypt(alice, cipher)
-print("msg2:\n%s\n" % msg2.hex()[:16])
-ints2 = pre.msg_to_ints(msg2)
-print("ints2:\n%s\n" % ints2)
+        self.assertEqual(token1, token2)
+        self.assertNotEqual(token1, token3)
 
-re_cipher = pre.apply_token(token, cipher)
-print("re_cipher:\n%s\n" % re_cipher.hex()[:16])
+    def test_generate_msg(self):
+        msg1 = pre.generate_key()
+        self.assertIsNotNone(msg1)
+        msg2 = pre.generate_key()
+        self.assertIsNotNone(msg2)
+        self.assertNotEqual(msg1, msg2)
 
-msg3 = pre.decrypt(bob, re_cipher)
-print("msg3:\n%s\n" % msg3.hex()[:16])
-ints3 = pre.msg_to_ints(msg3)
-print("ints3:\n%s\n" % ints3)
+class TestEncryptionDecryption(unittest.TestCase):
+    def test_encrypt(self):
+        alice = pre.generate_key()
+        bob = pre.generate_key()
+        msg1 = pre.generate_msg()
+        msg2 = pre.generate_msg()
 
-assert msg1 == msg2 == msg3
-assert ints1 == ints2 == ints3
+        self.assertIsNotNone(pre.encrypt(alice, msg1))
+        self.assertNotEqual(pre.encrypt(alice, msg1), pre.encrypt(alice, msg1))
+        self.assertNotEqual(pre.encrypt(alice, msg1), pre.encrypt(bob, msg1))
+        self.assertNotEqual(pre.encrypt(alice, msg1), pre.encrypt(alice, msg2))
+
+    def test_encrypt_decrypt(self):
+        alice = pre.generate_key()
+        bob = pre.generate_key()
+        msg = pre.generate_msg()
+
+        cipher = pre.encrypt(alice, msg)
+        self.assertIsNotNone(cipher)
+        self.assertEqual(msg, pre.decrypt(alice, cipher))
+        self.assertNotEqual(msg, pre.decrypt(bob, cipher))
+
+class TestReEncryption(unittest.TestCase):
+    def test_re_encrypt(self):
+        alice = pre.generate_key()
+        bob = pre.generate_key()
+        msg1 = pre.generate_msg()
+        msg2 = pre.generate_msg()
+        msg3 = pre.generate_msg()
+
+        cipher1 = pre.encrypt(alice, msg1)
+        self.assertIsNotNone(cipher1)
+        self.assertEqual(msg1, pre.decrypt(alice, cipher1))
+        self.assertNotEqual(msg1, pre.decrypt(bob, cipher1))
+
+        token = pre.generate_token(alice, bob)
+        re_cipher1 = pre.apply_token(token, cipher1)
+        self.assertEqual(msg1, pre.decrypt(bob, re_cipher1))
+        self.assertNotEqual(msg1, pre.decrypt(alice, re_cipher1))
+
+        cipher2 = pre.encrypt(alice, msg2)
+        re_cipher2 = pre.apply_token(token, cipher2)
+        self.assertEqual(msg2, pre.decrypt(bob, re_cipher2))
+        self.assertNotEqual(msg2, pre.decrypt(alice, re_cipher2))
+
+        cipher3 = pre.encrypt(bob, msg3)
+        re_cipher3 = pre.apply_token(token, cipher3)
+        self.assertNotEqual(msg3, pre.decrypt(bob, re_cipher3))
+        self.assertNotEqual(msg3, pre.decrypt(alice, re_cipher3))
+
+class TestMessageConversion(unittest.TestCase):
+    def test_msg_to_ints(self):
+        msg1 = pre.generate_msg()
+        ints1 = pre.msg_to_ints(msg1)
+        self.assertIsNotNone(ints1)
+        self.assertEqual(ints1, pre.msg_to_ints(msg1))
+
+        msg2 = pre.generate_msg()
+        ints2 = pre.msg_to_ints(msg2)
+        self.assertIsNotNone(ints2)
+        self.assertEqual(ints2, pre.msg_to_ints(msg2))
+
+        self.assertNotEqual(ints1, ints2)
+
+if __name__ == '__main__':
+    unittest.main()
