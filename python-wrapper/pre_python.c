@@ -5,7 +5,7 @@
 void dump_hex(const char* label, char* bytes, int n) {
     printf("%s:\n", label);
     for (int i = 0; i < n; i++) {
-        printf("%02X", bytes[i]);
+        printf("%02x", (unsigned char)bytes[i]);
     }
     printf("\n");
     printf("\n");
