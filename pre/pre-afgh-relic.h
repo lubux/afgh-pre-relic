@@ -61,7 +61,7 @@ struct pre_keys_s {
   bn_t sk;       // secret factor a
   gt_t Z;        // Z = e(g,g)
   g1_t g, pk;    // generator, public key g^a
-  g2_t g2, pk_2; // generator, public key g_2^a, re-encryption token
+  g2_t g2, pk_2; // generator, public key g_2^a
   char type;     // flag to indicate the presence of the secret key
 };
 typedef struct pre_keys_s *pre_rel_keys_ptr;
