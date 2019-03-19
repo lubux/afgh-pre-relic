@@ -68,9 +68,10 @@ int run_benchmark(int runs) {
   pre_re_token_t token_to_bob;
   int encoded_key_size, encoded_token_size;
   high_resolution_clock::time_point t1, t2;
-  uint64_t key_generation[runs], key_encoding[runs], encryption[runs],
-      key_decoding[runs], token_generation[runs], token_encoding[runs],
-      token_decoding[runs], re_encryption[runs], decryption[runs];
+  uint64_t key_generation[runs], key_derivation[runs], key_encoding[runs],
+           encryption[runs], key_decoding[runs], token_generation[runs],
+           token_encoding[runs],token_decoding[runs], re_encryption[runs],
+           decryption[runs];
 
   std::cout << "Performing " << runs << " runs" << std::endl;
   std::cout << std::endl;
@@ -81,6 +82,12 @@ int run_benchmark(int runs) {
     t2 = high_resolution_clock::now();
     auto us = duration_cast<microseconds>(t2 - t1).count();
     key_generation[i] = (uint64_t)us;
+
+    t1 = high_resolution_clock::now();
+    pre_derive_next_keys(alice_key);
+    t2 = high_resolution_clock::now();
+    us = duration_cast<microseconds>(t2 - t1).count();
+    key_derivation[i] = (uint64_t)us;
 
     pre_generate_keys(bob_key);
 
@@ -139,6 +146,7 @@ int run_benchmark(int runs) {
     decryption[i] = (uint64_t)duration_cast<microseconds>(t2 - t1).count();
   }
   print_stats("Key Generation", "us", runs, key_generation);
+  print_stats("Key Derivation", "us", runs, key_derivation);
   print_stats("Key Encoding", "us", runs, key_encoding);
   print_stats("Key Decoding", "us", runs, key_decoding);
   print_stats("Encryption", "us", runs, encryption);

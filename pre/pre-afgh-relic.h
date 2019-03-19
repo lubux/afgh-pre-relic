@@ -251,9 +251,16 @@ int pre_ciphertext_clear(pre_ciphertext_t ciphertext);
 /**
  * Generate l
  * @param keys
- * @return
+ * @return STS_OK if ok else STS_ERR
  */
 int pre_generate_keys(pre_keys_t keys);
+
+/**
+ * Generate a new PRE public-private keypair from an existing one.
+ * @param keys the keys to be transformed
+ * @return STS_OK if ok else STS_ERR
+ */
+int pre_derive_next_keys(pre_keys_t keys);
 
 /**
  * Generate a PRE key

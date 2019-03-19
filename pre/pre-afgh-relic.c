@@ -236,6 +236,48 @@ int pre_generate_keys(pre_keys_t keys) {
   return result;
 }
 
+int pre_derive_next_keys(pre_keys_t keys) {
+  bn_t hash_int;
+  g1_t g1_hash_element;
+  g2_t g2_hash_element;
+  int size, result = STS_ERR;
+
+  bn_null(t);
+  TRY {
+    assert(keys);
+
+    bn_new(hash_int);
+    g1_new(g1_hash_element);
+    g2_new(g2_hash_element);
+
+    size = g1_size_bin(keys->pk, 1);
+    uint8_t buf[size], hash[64];
+    g1_write_bin(buf, size, keys->pk, 1);
+    md_map_sh512(hash, buf, size);
+    bn_read_bin(hash_int, hash, 64);
+
+    g1_mul_gen(g1_hash_element, hash_int);
+    g2_mul_gen(g2_hash_element, hash_int);
+
+    g1_add(keys->pk, keys->pk, g1_hash_element);
+    g2_add(keys->pk_2, keys->pk_2, g2_hash_element);
+
+    if (keys->type == PRE_REL_KEYS_TYPE_SECRET) {
+        bn_add(keys->sk, keys->sk, hash_int);
+    }
+
+    result = STS_OK;
+  }
+  CATCH_ANY {
+    result = STS_ERR;
+  }
+  FINALLY {
+    bn_free(t);
+  }
+
+  return result;
+}
+
 /* Since we are not storing the Settings, we have borrowed them from the first
  * instance Compute the secret and public key for follow-up users!
  */
