@@ -55,33 +55,52 @@
 #define ENCODING_SIZE 2;
 
 /**
- *  Represents a PRE Key
+ *  PRE public parameters
  */
-struct pre_keys_s {
-  bn_t sk;       // secret factor a
-  gt_t Z;        // Z = e(g,g)
-  g1_t g, pk;    // generator, public key g^a
-  g2_t g2, pk_2; // generator, public key g_2^a
-  char type;     // flag to indicate the presence of the secret key
+struct pre_params_s {
+  g1_t g1;     // generator for G1
+  g2_t g2;     // generator for G2
+  gt_t Z;      // Z = e(g1,g2)
+  bn_t g1_ord; // order of g1
 };
-typedef struct pre_keys_s *pre_rel_keys_ptr;
-typedef struct pre_keys_s pre_keys_t[1];
+typedef struct pre_params_s *pre_rel_params_ptr;
+typedef struct pre_params_s pre_params_t[1];
 
 /**
- * Returns the encoded key size of the provided key
- * @param key
- * @return the size in bytes of the encoded key
+ *  PRE secret key
  */
-int get_encoded_key_size(pre_keys_t key);
+struct pre_sk_s {
+  bn_t sk;      // secret factor a
+  bn_t inverse; // 1/a mod n (n = order of g1)
+};
+typedef struct pre_sk_s *pre_rel_sk_ptr;
+typedef struct pre_sk_s pre_sk_t[1];
 
 /**
- * Encodes the given key as a byte array.
- * @param buff the allocated buffer for the encoding
- * @param size the allocated buffer size
- * @param key the key
- * @return STS_OK if ok else STS_ERR
+ *  PRE public key
  */
-int encode_key(char *buff, int size, pre_keys_t key);
+struct pre_pk_s {
+  g1_t pk1; // public key g1^a
+  g2_t pk2; // public key g2^a
+};
+typedef struct pre_pk_s *pre_rel_pk_ptr;
+typedef struct pre_pk_s pre_pk_t[1];
+
+int get_encoded_params_size(pre_params_t params);
+
+int encode_params(char *buff, int size, pre_params_t params);
+
+int decode_params(pre_params_t params, char *buff, int size);
+
+int get_encoded_sk_size(pre_sk_t sk);
+
+int encode_sk(char *buff, int size, pre_sk_t sk);
+
+int decode_sk(pre_sk_t sk, char *buff, int size);
+
+int get_encoded_pk_size(pre_pk_t pk);
+
+int encode_pk(char *buff, int size, pre_pk_t pk);
 
 /**
  * Decodes the encoded key from a buffer.
@@ -90,7 +109,8 @@ int encode_key(char *buff, int size, pre_keys_t key);
  * @param size the buffer size of the encoded key
  * @return STS_OK if ok else STS_ERR
  */
-int decode_key(pre_keys_t key, char *buff, int size);
+int decode_pk(pre_pk_t pk, char *buff, int size);
+
 
 /**
  * Returns the encoded msg size of the provided msg
@@ -120,18 +140,18 @@ int decode_msg(gt_t msg, char *buff, int size);
 /**
  * Represents a PRE re-encryption token
  */
-struct pre_re_token_s {
-  g2_t re_token;
+struct pre_token_s {
+  g2_t token;
 };
-typedef struct pre_re_token_s *pre_re_token_ptr;
-typedef struct pre_re_token_s pre_re_token_t[1];
+typedef struct pre_token_s *pre_token_ptr;
+typedef struct pre_token_s pre_token_t[1];
 
 /**
  * Returns the encoded token size of the provided token
  * @param token the PRE token
  * @return the size in bytes of the encoded token
  */
-int get_encoded_token_size(pre_re_token_t token);
+int get_encoded_token_size(pre_token_t token);
 
 /**
  * Encodes the given token as a byte array.
@@ -140,7 +160,7 @@ int get_encoded_token_size(pre_re_token_t token);
  * @param token the token
  * @return STS_OK if ok else STS_ERR
  */
-int encode_token(char *buff, int size, pre_re_token_t token);
+int encode_token(char *buff, int size, pre_token_t token);
 
 /**
  * Decodes the encoded token from a byte buffer.
@@ -149,7 +169,7 @@ int encode_token(char *buff, int size, pre_re_token_t token);
  * @param size the buffer size of the encoded token
  * @return STS_OK if ok else STS_ERR
  */
-int decode_token(pre_re_token_t token, char *buff, int size);
+int decode_token(pre_token_t token, char *buff, int size);
 
 /**
  * The representation of a PRE ciphertext.
@@ -213,13 +233,6 @@ int pre_rand_message(gt_t msg);
 int pre_map_to_key(uint8_t *key, int key_len, gt_t msg);
 
 /**
- * Free a key
- * @param keys
- * @return STS_OK if ok else STS_ERR
- */
-int pre_keys_clear(pre_keys_t keys);
-
-/**
  * Free a ciphertext
  * @param cipher
  * @return STS_OK if ok else STS_ERR
@@ -231,7 +244,7 @@ int pre_cipher_clear(pre_ciphertext_t cipher);
  * @param token
  * @return STS_OK if ok else STS_ERR
  */
-int pre_token_clear(pre_re_token_t token);
+int pre_token_clear(pre_token_t token);
 
 /**
  * Allocates a empty ciphertext )
@@ -248,56 +261,19 @@ int pre_ciphertext_init(pre_ciphertext_t ciphertext, char group);
  */
 int pre_ciphertext_clear(pre_ciphertext_t ciphertext);
 
-/**
- * Generate l
- * @param keys
- * @return STS_OK if ok else STS_ERR
- */
-int pre_generate_keys(pre_keys_t keys);
+int pre_generate_params(pre_params_t params);
 
-/**
- * Generate a new PRE public-private keypair from an existing one.
- * @param keys the keys to be transformed
- * @return STS_OK if ok else STS_ERR
- */
-int pre_derive_next_keys(pre_keys_t keys);
+int pre_generate_sk(pre_params_t params, pre_sk_t sk);
 
-/**
- * Generate a PRE key
- * @param keys the key
- * @return STS_OK if ok else STS_ERR
- */
-int pre_generate_secret_key(pre_keys_t keys);
+int pre_generate_pk(pre_params_t params, pre_sk_t sk, pre_pk_t pk);
 
-/**
- * Encrypt a plaintext integer with the PRE cipher.
- * @param ciphertext the resulting ciphertext.
- * @param keys the PRE key
- * @param plaintext the input integer
- * @return STS_OK if ok else STS_ERR
- */
-int pre_encrypt(pre_ciphertext_t ciphertext, pre_keys_t keys, gt_t plaintext);
+int pre_derive_next_keypair(pre_sk_t sk, pre_pk_t pk);
 
-/**
- * Decrypts a PRE ciphertext with the given key and maps it back to the
- * plaintext integer.
- * @param res a pointer to the resulting integer.
- * @param keys a PRE key
- * @param ciphertext the input ciphertext
- * @param use_bsgs 0 for brutforce, else for baby-step-giant-step used for the
- * mapping
- * @return STS_OK if ok else STS_ERR
- */
-int pre_decrypt(gt_t res, pre_keys_t keys, pre_ciphertext_t ciphertext);
+int pre_encrypt(pre_ciphertext_t ciphertext, pre_params_t params, pre_pk_t pk, gt_t plaintext);
 
-/**
- * Generates a re-encryption token from A to B.
- * @param token the token from (A->B)
- * @param keys the PRE key of A
- * @param pk_2_b the public part of the PRE key of B.
- * @return  STS_OK if ok else STS_ERR
- */
-int pre_generate_re_token(pre_re_token_t token, pre_keys_t keys, g2_t pk_2_b);
+int pre_decrypt(gt_t plaintext, pre_params_t params, pre_sk_t sk, pre_ciphertext_t ciphertext);
+
+int pre_generate_token(pre_token_t token, pre_params_t params, pre_sk_t sk, pre_pk_t pk);
 
 /**
  * Re-encrypts the given ciphertext with the provided token
@@ -306,7 +282,7 @@ int pre_generate_re_token(pre_re_token_t token, pre_keys_t keys, g2_t pk_2_b);
  * @param ciphertext th input ciphertext
  * @return  STS_OK if ok else STS_ERR
  */
-int pre_re_apply(pre_re_token_t keys, pre_ciphertext_t res,
+int pre_apply_token(pre_token_t token, pre_ciphertext_t res,
                  pre_ciphertext_t ciphertext);
 
 #endif

@@ -85,22 +85,47 @@ int pre_deinit() {
   return STS_OK;
 }
 
-// cleanup and free sub-structures in 'keys'
-int pre_keys_clear(pre_keys_t keys) {
+int pre_params_clear(pre_params_t params) {
   int result = STS_ERR;
 
   TRY {
-    assert(keys);
+    assert(params);
 
-    gt_free(keys->Z);
-    g1_free(keys->g);
-    g1_free(keys->pk);
-    g2_free(keys->g2);
-    g2_free(keys->pk_2);
+    gt_free(params->Z);
+    g1_free(params->g1);
+    g2_free(params->g2);
 
-    if (keys->type == PRE_REL_KEYS_TYPE_SECRET) {
-      bn_free(keys->sk);
-    }
+    result = STS_OK;
+  }
+  CATCH_ANY { result = STS_ERR; }
+
+  return result;
+}
+
+int pre_sk_clear(pre_sk_t sk) {
+  int result = STS_ERR;
+
+  TRY {
+    assert(sk);
+
+    bn_free(sk->sk);
+    bn_free(sk->inverse);
+
+    result = STS_OK;
+  }
+  CATCH_ANY { result = STS_ERR; }
+
+  return result;
+}
+
+int pre_pk_clear(pre_pk_t pk) {
+  int result = STS_ERR;
+
+  TRY {
+    assert(pk);
+
+    g1_free(pk->pk1);
+    g2_free(pk->pk2);
 
     result = STS_OK;
   }
@@ -172,99 +197,121 @@ int pre_ciphertext_clear(pre_ciphertext_t ciphertext) {
   return result;
 }
 
-/* generate suitable pairing parameters and a pair of public/secret keys: they
- * are stored in the structure 'keys' if composite>0, then it results to n =
- * q1q2, where q1 and q2 are primes with lower orders if composite=0, then n has
- * the same order as the prime q1. This curve is single prime
- */
-int pre_generate_keys(pre_keys_t keys) {
-  bn_t ord;
+int pre_generate_params(pre_params_t params) {
   int result = STS_ERR;
 
-  bn_null(ord);
-  bn_null(keys->n);
-  bn_null(keys->sk);
-  g1_null(keys->g);
-  g1_null(keys->pk);
-  g2_null(keys->g2);
-  g2_null(keys->pk_2);
-  // g2_null(keys->re_token);
-  gt_null(keys->Z);
+  g1_null(params->g1);
+  g2_null(params->g2);
+  gt_null(params->Z);
+  bn_null(params->g1_ord);
 
   TRY {
-    bn_new(ord);
-    bn_new(keys->sk);
-    g1_new(keys->g);
-    g1_new(keys->pk);
-    g2_new(keys->g2);
-    g2_new(keys->pk_2);
-    gt_new(keys->Z);
+    g1_new(params->g1);
+    g2_new(params->g2);
+    gt_new(params->Z);
+    bn_new(params->g1_ord);
 
-    keys->type = PRE_REL_KEYS_TYPE_SECRET;
-
-    g1_get_ord(ord);
-
-    g1_get_gen(keys->g);
-    g2_get_gen(keys->g2);
-
-    /* define a random value as secret key and compute the public key as pk =
-     * g^sk*/
-    bn_rand_mod(keys->sk, ord);
-
-    g1_mul_gen(keys->pk, keys->sk);
-    g2_mul_gen(keys->pk_2, keys->sk);
+    g1_get_gen(params->g1);
+    g2_get_gen(params->g2);
 
     /* pairing Z = e(g,g)*/
-    pc_map(keys->Z, keys->g, keys->g2);
+    pc_map(params->Z, params->g1, params->g2);
+
+    g1_get_ord(params->g1_ord);
 
     result = STS_OK;
   }
   CATCH_ANY {
     result = STS_ERR;
 
-    bn_null(keys->n);
-    bn_null(keys->sk);
-    g1_null(keys->g);
-    g1_null(keys->pk);
-    g2_null(keys->g2);
-    g2_null(keys->pk_2);
-    // g2_null(keys->re_token);
-    gt_null(keys->Z);
-  }
-  FINALLY { bn_free(ord); };
+    g1_null(params->g1);
+    g2_null(params->g2);
+    gt_null(params->Z);
+    bn_null(params->g1_ord);
+  };
 
   return result;
 }
 
-int pre_derive_next_keys(pre_keys_t keys) {
+int pre_generate_sk(pre_params_t params, pre_sk_t sk) {
+  int result = STS_ERR;
+
+  bn_null(sk->sk);
+  bn_null(sk->inverse);
+
+  TRY {
+    bn_new(sk->sk);
+    bn_new(sk->inverse);
+
+    // generate a random value, a, as secret key
+    bn_rand_mod(sk->sk, params->g1_ord);
+
+    // compute 1/a mod n for use later
+    mod_inverse(sk->inverse, sk->sk, params->g1_ord);
+
+    result = STS_OK;
+  }
+  CATCH_ANY {
+    result = STS_ERR;
+
+    bn_null(sk->sk);
+    bn_null(sk->inverse);
+  };
+
+  return result;
+}
+
+int pre_generate_pk(pre_params_t params, pre_sk_t sk, pre_pk_t pk) {
+  int result = STS_ERR;
+
+  g1_null(pk->pk1);
+  g2_null(pk->pk2);
+
+  TRY {
+    g1_new(pk->pk1);
+    g2_new(pk->pk2);
+
+    // compute the public key as pk1 = g1^a, pk2 = g2^a
+    g1_mul_gen(pk->pk1, sk->sk);
+    g2_mul_gen(pk->pk2, sk->sk);
+
+    result = STS_OK;
+  }
+  CATCH_ANY {
+    result = STS_ERR;
+
+    g1_null(pk->pk1);
+    g2_null(pk->pk2);
+  };
+
+  return result;
+}
+
+int pre_derive_next_pk(pre_pk_t pk) {
+  int size, result = STS_ERR;
   bn_t hash_int;
   g1_t g1_hash_element;
   g2_t g2_hash_element;
-  int size, result = STS_ERR;
 
-  bn_null(t);
+  bn_null(hash_int);
   TRY {
-    assert(keys);
+    assert(pk);
 
     bn_new(hash_int);
     g1_new(g1_hash_element);
     g2_new(g2_hash_element);
 
-    size = g1_size_bin(keys->pk, 1);
+    size = g1_size_bin(pk->pk1, 1);
     uint8_t buf[size], hash[64];
-    g1_write_bin(buf, size, keys->pk, 1);
+    g1_write_bin(buf, size, pk->pk1, 1);
     md_map_sh512(hash, buf, size);
     bn_read_bin(hash_int, hash, 64);
 
     g1_mul_gen(g1_hash_element, hash_int);
     g2_mul_gen(g2_hash_element, hash_int);
 
-    g1_add(keys->pk, keys->pk, g1_hash_element);
-    g2_add(keys->pk_2, keys->pk_2, g2_hash_element);
-
-    if (keys->type == PRE_REL_KEYS_TYPE_SECRET) {
-        bn_add(keys->sk, keys->sk, hash_int);
-    }
+    g1_add(pk->pk1, pk->pk1, g1_hash_element);
+    g2_add(pk->pk2, pk->pk2, g2_hash_element);
 
     result = STS_OK;
   }
@@ -272,99 +319,93 @@ int pre_derive_next_keys(pre_keys_t keys) {
     result = STS_ERR;
   }
   FINALLY {
-    bn_free(t);
+    bn_free(hash_int);
   }
 
   return result;
 }
 
-/* Since we are not storing the Settings, we have borrowed them from the first
- * instance Compute the secret and public key for follow-up users!
- */
-int pre_generate_secret_key(pre_keys_t keys) {
-  int result = STS_ERR;
-  bn_t ord;
+int pre_derive_next_keypair(pre_sk_t sk, pre_pk_t pk) {
+  int size, result = STS_ERR;
+  bn_t hash_int;
+  g1_t g1_hash_element;
+  g2_t g2_hash_element;
 
+  bn_null(hash_int);
   TRY {
-    assert(keys);
-    bn_new(ord);
-    g1_get_ord(ord);
+    assert(sk);
+    assert(pk);
 
-    /* define a random value as secret key and compute the public key as pk =
-     * g^sk*/
-    bn_rand_mod(keys->sk, ord);
+    bn_new(hash_int);
+    g1_new(g1_hash_element);
+    g2_new(g2_hash_element);
 
-    g1_mul_gen(keys->pk, keys->sk);
-    g2_mul_gen(keys->pk_2, keys->sk);
+    size = g1_size_bin(pk->pk1, 1);
+    uint8_t buf[size], hash[64];
+    g1_write_bin(buf, size, pk->pk1, 1);
+    md_map_sh512(hash, buf, size);
+    bn_read_bin(hash_int, hash, 64);
+
+    g1_mul_gen(g1_hash_element, hash_int);
+    g2_mul_gen(g2_hash_element, hash_int);
+
+    g1_add(pk->pk1, pk->pk1, g1_hash_element);
+    g2_add(pk->pk2, pk->pk2, g2_hash_element);
+
+    bn_add(sk->sk, sk->sk, hash_int);
 
     result = STS_OK;
   }
-  CATCH_ANY { result = STS_ERR; }
-  FINALLY { bn_free(ord); };
+  CATCH_ANY {
+    result = STS_ERR;
+  }
+  FINALLY {
+    bn_free(hash_int);
+  }
 
   return result;
 }
 
-/* Generate the re-encryption token towards Bob by means of his public key_b*/
-int pre_generate_re_token(pre_re_token_t token, pre_keys_t keys, g2_t pk_2_b) {
-  bn_t t, ord;
+int pre_generate_token(pre_token_t token, pre_params_t params, pre_sk_t sk, pre_pk_t pk) {
   int result = STS_ERR;
 
-  bn_null(t);
+  g2_null(token->token);
   TRY {
-    assert(keys);
-    bn_new(ord);
-    // assert(!element_is0(pk_pp_b));
+    assert(token);
+    assert(params);
+    assert(sk);
+    assert(pk);
 
-    g1_get_ord(ord);
-    g2_new(keys->re_token);
-    bn_new(t);
-
-    /* 1/a mod n */
-    mod_inverse(t, keys->sk, ord);
+    g2_new(token->token);
 
     /* g^b ^ 1/a*/
-    g2_mul(token->re_token, pk_2_b, t);
+    g2_mul(token->token, pk->pk2, sk->inverse);
 
     result = STS_OK;
   }
   CATCH_ANY {
     result = STS_ERR;
-    g2_null(keys->re_token);
-  }
-  FINALLY {
-    bn_free(t);
-    bn_free(ord);
-  }
+    g2_null(token->token);
+  };
 
   return result;
 }
 
-/* encrypt the given plaintext (a number) using the public-key in 'keys';
- * the number of bits in the plaintext can be specified of autodetected
- * (plaintext_bits=0)
- */
-int pre_encrypt(pre_ciphertext_t ciphertext, pre_keys_t keys, gt_t plaintext) {
-  bn_t r, ord;
+int pre_encrypt(pre_ciphertext_t ciphertext, pre_params_t params, pre_pk_t pk, gt_t plaintext) {
   int result = STS_ERR;
+  bn_t r;
 
   bn_null(r);
-  bn_null(m);
-  gt_null(t);
 
   TRY {
-
     bn_new(r);
-    bn_new(ord);
 
     gt_new(ciphertext->C1);
     g1_new(ciphertext->C2_G1);
-    g1_get_ord(ord);
 
     assert(ciphertext);
-    assert(keys);
-    assert((keys->type == PRE_REL_KEYS_TYPE_SECRET) ||
-           (keys->type == PRE_REL_KEYS_TYPE_ONLY_PUBLIC));
+    assert(params);
+    assert(pk);
 
     ciphertext->group = PRE_REL_CIPHERTEXT_IN_G_GROUP;
 
@@ -376,20 +417,20 @@ int pre_encrypt(pre_ciphertext_t ciphertext, pre_keys_t keys, gt_t plaintext) {
      */
     /* Compute C1 part: MZ^r*/
     /* random r in Zn  (re-use r) */
-    bn_rand_mod(r, ord);
+    bn_rand_mod(r, params->g1_ord);
     while (bn_is_zero(r)) {
-      bn_rand_mod(r, ord);
+      bn_rand_mod(r, params->g1_ord);
     }
 
     /* Z^r */
-    gt_exp(ciphertext->C1, keys->Z, r);
+    gt_exp(ciphertext->C1, params->Z, r);
 
     /* Z^r*m */
     gt_mul(ciphertext->C1, ciphertext->C1, plaintext);
 
     /* Compute C2 part: G^ar = pk ^r*/
     /* g^ar = pk^r */
-    g1_mul(ciphertext->C2_G1, keys->pk, r);
+    g1_mul(ciphertext->C2_G1, pk->pk1, r);
 
     result = STS_OK;
   }
@@ -400,65 +441,56 @@ int pre_encrypt(pre_ciphertext_t ciphertext, pre_keys_t keys, gt_t plaintext) {
   }
   FINALLY {
     bn_free(r);
-    bn_free(ord);
   }
 
   return result;
 }
 
-int pre_decrypt(gt_t res, pre_keys_t keys, pre_ciphertext_t ciphertext) {
+int pre_decrypt(gt_t plaintext, pre_params_t params, pre_sk_t sk, pre_ciphertext_t ciphertext) {
+  int result = STS_ERR;
   g2_t t1;
   gt_t t0;
-  bn_t t11, ord;
-  int result = STS_ERR;
 
-  bn_null(t11);
   gt_null(t0);
   g2_null(t1);
-  gt_null(res);
+  gt_null(plaintext);
 
   TRY {
-    bn_new(t11);
     gt_new(t0);
     g2_new(t1);
-    gt_new(res);
-    bn_new(ord);
+    gt_new(plaintext);
 
-    assert(keys);
-    assert(keys->type == PRE_REL_KEYS_TYPE_SECRET);
+    assert(params);
+    assert(sk);
     assert(ciphertext);
     assert((ciphertext->group == PRE_REL_CIPHERTEXT_IN_G_GROUP) ||
            (ciphertext->group == PRE_REL_CIPHERTEXT_IN_GT_GROUP));
 
-    g1_get_ord(ord);
     /*
      * M = (M.Z^r) / e(G^ar, G^1/a)
      * M = C1 / e(C2, G^1/a)
      */
 
-    /* 1/a mod n */
-    mod_inverse(t11, keys->sk, ord);
-
     if (ciphertext->group == PRE_REL_CIPHERTEXT_IN_G_GROUP) {
       /* g ^ 1/a*/
-      g2_mul(t1, keys->g2, t11);
+      g2_mul(t1, params->g2, sk->inverse);
 
       /* e(g^ar, g^-a) = Z^r */
-      pc_map(res, ciphertext->C2_G1, t1);
+      pc_map(plaintext, ciphertext->C2_G1, t1);
       // pbc_pmesg(3, "Z^r: %B\n", t2);
     } else {
       /* C2 = Z^ar
        * Compute: Z^ar^(1/a)*/
-      if (bn_is_zero(t11)) {
-        gt_set_unity(res);
+      if (bn_is_zero(sk->inverse)) {
+        gt_set_unity(plaintext);
       } else {
-        gt_exp(res, ciphertext->C2_GT, t11);
+        gt_exp(plaintext, ciphertext->C2_GT, sk->inverse);
       }
     }
 
     /* C1 / e(C2, g^a^-1) or C1/C2^(1/a) */
-    gt_inv(t0, res);
-    gt_mul(res, ciphertext->C1, t0);
+    gt_inv(t0, plaintext);
+    gt_mul(plaintext, ciphertext->C1, t0);
 
     result = STS_OK;
   }
@@ -466,18 +498,15 @@ int pre_decrypt(gt_t res, pre_keys_t keys, pre_ciphertext_t ciphertext) {
   FINALLY {
     gt_free(t0);
     g1_free(t1);
-    bn_free(t11);
-    bn_free(ord);
   }
 
   return result;
 }
 
-int pre_re_apply(pre_re_token_t token, pre_ciphertext_t res,
+int pre_apply_token(pre_token_t token, pre_ciphertext_t res,
                  pre_ciphertext_t ciphertext) {
   int result;
   TRY {
-
     assert(token);
     assert(res);
     assert(ciphertext);
@@ -491,7 +520,7 @@ int pre_re_apply(pre_re_token_t token, pre_ciphertext_t res,
 
     /* level2: C2 = g^ar */
     /* level1: C2 = e(g^ar, g^(b/a) = Z^br*/
-    pc_map(res->C2_GT, ciphertext->C2_G1, token->re_token);
+    pc_map(res->C2_GT, ciphertext->C2_G1, token->token);
 
     res->group = PRE_REL_CIPHERTEXT_IN_GT_GROUP;
     result = STS_OK;
@@ -524,36 +553,23 @@ int decode_msg(gt_t msg, char *buff, int size) {
   return STS_OK;
 }
 
-int get_encoded_token_size(pre_re_token_t token) {
-  return g2_size_bin(token->re_token, 1);
+int get_encoded_token_size(pre_token_t token) {
+  return g2_size_bin(token->token, 1);
 }
 
-int encode_token(char *buff, int size, pre_re_token_t token) {
+int encode_token(char *buff, int size, pre_token_t token) {
   int size_type = get_encoded_token_size(token);
   if (size < size_type) {
     return STS_ERR;
   }
-  g2_write_bin((uint8_t *)buff, size_type, token->re_token, 1);
+  g2_write_bin((uint8_t *)buff, size_type, token->token, 1);
   return STS_OK;
 }
 
-int decode_token(pre_re_token_t token, char *buff, int size) {
-  g2_new(token->re_token);
-  g2_read_bin(token->re_token, (uint8_t *)buff, size);
+int decode_token(pre_token_t token, char *buff, int size) {
+  g2_new(token->token);
+  g2_read_bin(token->token, (uint8_t *)buff, size);
   return STS_OK;
-}
-
-int get_encoded_key_size(pre_keys_t key) {
-  int total_size = 1;
-  total_size += gt_size_bin(key->Z, 1) + ENCODING_SIZE;
-  total_size += g1_size_bin(key->g, 1) + ENCODING_SIZE;
-  total_size += g1_size_bin(key->pk, 1) + ENCODING_SIZE;
-  total_size += g2_size_bin(key->g2, 1) + ENCODING_SIZE;
-  total_size += g2_size_bin(key->pk_2, 1) + ENCODING_SIZE;
-  if (key->type == PRE_REL_KEYS_TYPE_SECRET) {
-    total_size += bn_size_bin(key->sk) + ENCODING_SIZE;
-  }
-  return total_size;
 }
 
 void write_size(char *buffer, int size) {
@@ -565,68 +581,59 @@ int read_size(char *buffer) {
   return ((uint8_t)buffer[0] << 8) | ((uint8_t)buffer[1]);
 }
 
-int encode_key(char *buff, int size, pre_keys_t key) {
-  int size_type = get_encoded_key_size(key), temp_size;
-  char *cur_ptr = buff + 1;
+int get_encoded_params_size(pre_params_t params) {
+  int total_size = 0;
+  total_size += gt_size_bin(params->Z, 1) + ENCODING_SIZE;
+  total_size += g1_size_bin(params->g1, 1) + ENCODING_SIZE;
+  total_size += g2_size_bin(params->g2, 1) + ENCODING_SIZE;
+  total_size += bn_size_bin(params->g1_ord) + ENCODING_SIZE;
+  return total_size;
+}
+
+int encode_params(char *buff, int size, pre_params_t params) {
+  int size_type = get_encoded_params_size(params), temp_size;
+  char *cur_ptr = buff;
   if (size < size_type) {
     return STS_ERR;
   }
 
-  buff[0] = key->type;
-
-  temp_size = gt_size_bin(key->Z, 1);
+  temp_size = gt_size_bin(params->Z, 1);
   write_size(cur_ptr, (u_int16_t)temp_size);
   cur_ptr += ENCODING_SIZE;
-  gt_write_bin((uint8_t *)cur_ptr, temp_size, key->Z, 1);
+  gt_write_bin((uint8_t *)cur_ptr, temp_size, params->Z, 1);
   cur_ptr += temp_size;
 
-  temp_size = g1_size_bin(key->g, 1);
+  temp_size = g1_size_bin(params->g1, 1);
   write_size(cur_ptr, (u_int16_t)temp_size);
   cur_ptr += ENCODING_SIZE;
-  g1_write_bin((uint8_t *)cur_ptr, temp_size, key->g, 1);
+  g1_write_bin((uint8_t *)cur_ptr, temp_size, params->g1, 1);
   cur_ptr += temp_size;
 
-  temp_size = g1_size_bin(key->pk, 1);
+  temp_size = g2_size_bin(params->g2, 1);
   write_size(cur_ptr, (u_int16_t)temp_size);
   cur_ptr += ENCODING_SIZE;
-  g1_write_bin((uint8_t *)cur_ptr, temp_size, key->pk, 1);
+  g2_write_bin((uint8_t *)cur_ptr, temp_size, params->g2, 1);
   cur_ptr += temp_size;
 
-  temp_size = g2_size_bin(key->g2, 1);
-  write_size(cur_ptr, (u_int16_t)temp_size);
+  temp_size = bn_size_bin(params->g1_ord);
+  write_size(cur_ptr, temp_size);
   cur_ptr += ENCODING_SIZE;
-  g2_write_bin((uint8_t *)cur_ptr, temp_size, key->g2, 1);
-  cur_ptr += temp_size;
-
-  temp_size = g2_size_bin(key->pk_2, 1);
-  write_size(cur_ptr, (u_int16_t)temp_size);
-  cur_ptr += ENCODING_SIZE;
-  g2_write_bin((uint8_t *)cur_ptr, temp_size, key->pk_2, 1);
-  cur_ptr += temp_size;
-
-  if (key->type == PRE_REL_KEYS_TYPE_SECRET) {
-    temp_size = bn_size_bin(key->sk);
-    write_size(cur_ptr, temp_size);
-    cur_ptr += ENCODING_SIZE;
-    bn_write_bin((uint8_t *)cur_ptr, temp_size, key->sk);
-  }
+  bn_write_bin((uint8_t *)cur_ptr, temp_size, params->g1_ord);
 
   return STS_OK;
 }
 
-int decode_key(pre_keys_t key, char *buff, int size) {
-  int temp_size, dyn_size = 1;
-  char *cur_ptr = buff + 1;
-  key->type = buff[0];
+int decode_params(pre_params_t params, char *buff, int size) {
+  int temp_size, dyn_size = 0;
+  char *cur_ptr = buff;
   if (size < 4) {
     return STS_ERR;
   }
 
-  g1_new(key->g);
-  g1_new(key->pk);
-  g2_new(key->g2);
-  g2_new(key->pk_2);
-  gt_new(key->Z);
+  g1_new(params->g1);
+  g2_new(params->g2);
+  gt_new(params->Z);
+  bn_new(params->g1_ord);
 
   temp_size = read_size(cur_ptr);
   dyn_size += temp_size + ENCODING_SIZE;
@@ -634,7 +641,7 @@ int decode_key(pre_keys_t key, char *buff, int size) {
     return STS_ERR;
   }
   cur_ptr += ENCODING_SIZE;
-  gt_read_bin(key->Z, (uint8_t *)cur_ptr, temp_size);
+  gt_read_bin(params->Z, (uint8_t *)cur_ptr, temp_size);
   cur_ptr += temp_size;
 
   temp_size = read_size(cur_ptr);
@@ -643,7 +650,7 @@ int decode_key(pre_keys_t key, char *buff, int size) {
     return STS_ERR;
   }
   cur_ptr += ENCODING_SIZE;
-  g1_read_bin(key->g, (uint8_t *)cur_ptr, temp_size);
+  g1_read_bin(params->g1, (uint8_t *)cur_ptr, temp_size);
   cur_ptr += temp_size;
 
   temp_size = read_size(cur_ptr);
@@ -652,7 +659,7 @@ int decode_key(pre_keys_t key, char *buff, int size) {
     return STS_ERR;
   }
   cur_ptr += ENCODING_SIZE;
-  g1_read_bin(key->pk, (uint8_t *)cur_ptr, temp_size);
+  g2_read_bin(params->g2, (uint8_t *)cur_ptr, temp_size);
   cur_ptr += temp_size;
 
   temp_size = read_size(cur_ptr);
@@ -661,7 +668,57 @@ int decode_key(pre_keys_t key, char *buff, int size) {
     return STS_ERR;
   }
   cur_ptr += ENCODING_SIZE;
-  g2_read_bin(key->g2, (uint8_t *)cur_ptr, temp_size);
+  bn_read_bin(params->g1_ord, (uint8_t *)cur_ptr, temp_size);
+  cur_ptr += temp_size;
+
+  return STS_OK;
+}
+
+int get_encoded_sk_size(pre_sk_t sk) {
+  int total_size = 0;
+  total_size += bn_size_bin(sk->sk) + ENCODING_SIZE;
+  total_size += bn_size_bin(sk->inverse) + ENCODING_SIZE;
+  return total_size;
+}
+
+int encode_sk(char *buff, int size, pre_sk_t sk) {
+  int size_type = get_encoded_sk_size(sk), temp_size;
+  char *cur_ptr = buff;
+  if (size < size_type) {
+    return STS_ERR;
+  }
+
+  temp_size = bn_size_bin(sk->sk);
+  write_size(cur_ptr, temp_size);
+  cur_ptr += ENCODING_SIZE;
+  bn_write_bin((uint8_t *)cur_ptr, temp_size, sk->sk);
+  cur_ptr += temp_size;
+
+  temp_size = bn_size_bin(sk->inverse);
+  write_size(cur_ptr, temp_size);
+  cur_ptr += ENCODING_SIZE;
+  bn_write_bin((uint8_t *)cur_ptr, temp_size, sk->inverse);
+
+  return STS_OK;
+}
+
+int decode_sk(pre_sk_t sk, char *buff, int size) {
+  int temp_size, dyn_size = 0;
+  char *cur_ptr = buff;
+  if (size < 4) {
+    return STS_ERR;
+  }
+
+  bn_new(sk->sk);
+  bn_new(sk->inverse);
+
+  temp_size = read_size(cur_ptr);
+  dyn_size += temp_size + ENCODING_SIZE;
+  if (size < dyn_size) {
+    return STS_ERR;
+  }
+  cur_ptr += ENCODING_SIZE;
+  bn_read_bin(sk->sk, (uint8_t *)cur_ptr, temp_size);
   cur_ptr += temp_size;
 
   temp_size = read_size(cur_ptr);
@@ -670,15 +727,69 @@ int decode_key(pre_keys_t key, char *buff, int size) {
     return STS_ERR;
   }
   cur_ptr += ENCODING_SIZE;
-  g2_read_bin(key->pk_2, (uint8_t *)cur_ptr, temp_size);
+  bn_read_bin(sk->inverse, (uint8_t *)cur_ptr, temp_size);
   cur_ptr += temp_size;
 
-  if (key->type == PRE_REL_KEYS_TYPE_SECRET) {
-    bn_new(key->sk);
-    temp_size = read_size(cur_ptr);
-    cur_ptr += ENCODING_SIZE;
-    bn_read_bin(key->sk, (uint8_t *)cur_ptr, temp_size);
+  return STS_OK;
+}
+
+int get_encoded_pk_size(pre_pk_t pk) {
+  int total_size = 0;
+  total_size += g1_size_bin(pk->pk1, 1) + ENCODING_SIZE;
+  total_size += g2_size_bin(pk->pk2, 1) + ENCODING_SIZE;
+  return total_size;
+}
+
+int encode_pk(char *buff, int size, pre_pk_t pk) {
+  int size_type = get_encoded_pk_size(pk), temp_size;
+  char *cur_ptr = buff;
+  if (size < size_type) {
+    return STS_ERR;
   }
+
+  temp_size = g1_size_bin(pk->pk1, 1);
+  write_size(cur_ptr, (u_int16_t)temp_size);
+  cur_ptr += ENCODING_SIZE;
+  g1_write_bin((uint8_t *)cur_ptr, temp_size, pk->pk1, 1);
+  cur_ptr += temp_size;
+
+  temp_size = g2_size_bin(pk->pk2, 1);
+  write_size(cur_ptr, (u_int16_t)temp_size);
+  cur_ptr += ENCODING_SIZE;
+  g2_write_bin((uint8_t *)cur_ptr, temp_size, pk->pk2, 1);
+  cur_ptr += temp_size;
+
+  return STS_OK;
+}
+
+int decode_pk(pre_pk_t pk, char *buff, int size) {
+  int temp_size, dyn_size = 0;
+  char *cur_ptr = buff;
+  if (size < 4) {
+    return STS_ERR;
+  }
+
+  g1_new(pk->pk1);
+  g2_new(pk->pk2);
+
+  temp_size = read_size(cur_ptr);
+  dyn_size += temp_size + ENCODING_SIZE;
+  if (size < dyn_size) {
+    return STS_ERR;
+  }
+  cur_ptr += ENCODING_SIZE;
+  g1_read_bin(pk->pk1, (uint8_t *)cur_ptr, temp_size);
+  cur_ptr += temp_size;
+
+  temp_size = read_size(cur_ptr);
+  dyn_size += temp_size + ENCODING_SIZE;
+  if (size < dyn_size) {
+    return STS_ERR;
+  }
+  cur_ptr += ENCODING_SIZE;
+  g2_read_bin(pk->pk2, (uint8_t *)cur_ptr, temp_size);
+  cur_ptr += temp_size;
+
   return STS_OK;
 }
 
@@ -774,8 +885,8 @@ int pre_cipher_clear(pre_ciphertext_t cipher) {
   return STS_OK;
 }
 
-int pre_token_clear(pre_re_token_t token) {
-  g2_free(token->re_token);
+int pre_token_clear(pre_token_t token) {
+  g2_free(token->token);
   return STS_OK;
 }
 

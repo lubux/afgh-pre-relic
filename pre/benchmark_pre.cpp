@@ -63,61 +63,107 @@ int print_stats(const char *desc, const char *unit, int n, uint64_t *times) {
 
 int run_benchmark(int runs) {
   gt_t msg, res;
-  pre_keys_t alice_key, bob_key;
+  pre_params_t params;
+  pre_sk_t alice_sk, bob_sk;
+  pre_pk_t alice_pk, bob_pk;
   pre_ciphertext_t alice_ciphers[runs], bob_ciphers[runs];
-  pre_re_token_t token_to_bob;
-  int encoded_key_size, encoded_token_size;
+  pre_token_t token_to_bob;
+  int encoded_params_size, encoded_sk_size, encoded_pk_size, encoded_token_size;
   high_resolution_clock::time_point t1, t2;
-  uint64_t key_generation[runs], key_derivation[runs], key_encoding[runs],
-           encryption[runs], key_decoding[runs], token_generation[runs],
-           token_encoding[runs],token_decoding[runs], re_encryption[runs],
-           decryption[runs];
+  uint64_t params_gen[runs], params_encode[runs], params_decode[runs],
+           sk_gen[runs], sk_encode[runs], sk_decode[runs], pk_gen[runs],
+           pk_encode[runs], pk_decode[runs], key_derive[runs], key_encode[runs],
+           encrypt[runs], key_decode[runs], token_gen[runs], token_encode[runs],
+           token_decode[runs], re_encrypt[runs], decrypt[runs];
 
   std::cout << "Performing " << runs << " runs" << std::endl;
   std::cout << std::endl;
 
   for (int i = 0; i < runs; i++) {
     t1 = high_resolution_clock::now();
-    pre_generate_keys(alice_key);
+    pre_generate_params(params);
     t2 = high_resolution_clock::now();
     auto us = duration_cast<microseconds>(t2 - t1).count();
-    key_generation[i] = (uint64_t)us;
+    params_gen[i] = (uint64_t)us;
+
+    encoded_params_size = get_encoded_params_size(params);
+    char params_str[encoded_params_size];
 
     t1 = high_resolution_clock::now();
-    pre_derive_next_keys(alice_key);
+    encode_params(params_str, encoded_params_size, params);
     t2 = high_resolution_clock::now();
     us = duration_cast<microseconds>(t2 - t1).count();
-    key_derivation[i] = (uint64_t)us;
-
-    pre_generate_keys(bob_key);
-
-    encoded_key_size = get_encoded_key_size(alice_key);
-    char alice_key_str[encoded_key_size];
+    params_encode[i] = (uint64_t)us;
 
     t1 = high_resolution_clock::now();
-    encode_key(alice_key_str, encoded_key_size, alice_key);
+    decode_params(params, params_str, encoded_params_size);
     t2 = high_resolution_clock::now();
     us = duration_cast<microseconds>(t2 - t1).count();
-    key_encoding[i] = (uint64_t)us;
+    params_decode[i] = (uint64_t)us;
 
     t1 = high_resolution_clock::now();
-    decode_key(alice_key, alice_key_str, encoded_key_size);
+    pre_generate_sk(params, alice_sk);
     t2 = high_resolution_clock::now();
     us = duration_cast<microseconds>(t2 - t1).count();
-    key_decoding[i] = (uint64_t)us;
+    sk_gen[i] = (uint64_t)us;
+
+    encoded_sk_size = get_encoded_sk_size(alice_sk);
+    char alice_sk_str[encoded_sk_size];
+
+    t1 = high_resolution_clock::now();
+    encode_sk(alice_sk_str, encoded_sk_size, alice_sk);
+    t2 = high_resolution_clock::now();
+    us = duration_cast<microseconds>(t2 - t1).count();
+    sk_encode[i] = (uint64_t)us;
+
+    t1 = high_resolution_clock::now();
+    decode_sk(alice_sk, alice_sk_str, encoded_sk_size);
+    t2 = high_resolution_clock::now();
+    us = duration_cast<microseconds>(t2 - t1).count();
+    sk_decode[i] = (uint64_t)us;
+
+    encoded_pk_size = get_encoded_pk_size(alice_pk);
+    char alice_pk_str[encoded_pk_size];
+
+    t1 = high_resolution_clock::now();
+    encode_pk(alice_pk_str, encoded_pk_size, alice_pk);
+    t2 = high_resolution_clock::now();
+    us = duration_cast<microseconds>(t2 - t1).count();
+    pk_encode[i] = (uint64_t)us;
+
+    t1 = high_resolution_clock::now();
+    decode_pk(alice_pk, alice_pk_str, encoded_pk_size);
+    t2 = high_resolution_clock::now();
+    us = duration_cast<microseconds>(t2 - t1).count();
+    pk_decode[i] = (uint64_t)us;
+
+    t1 = high_resolution_clock::now();
+    pre_generate_pk(params, alice_sk, alice_pk);
+    t2 = high_resolution_clock::now();
+    us = duration_cast<microseconds>(t2 - t1).count();
+    pk_gen[i] = (uint64_t)us;
+
+    t1 = high_resolution_clock::now();
+    pre_derive_next_keypair(alice_sk, alice_pk);
+    t2 = high_resolution_clock::now();
+    us = duration_cast<microseconds>(t2 - t1).count();
+    key_derive[i] = (uint64_t)us;
+
+    pre_generate_sk(params, bob_sk);
+    pre_generate_pk(params, bob_sk, bob_pk);
 
     gt_new(msg);
     gt_rand(msg);
 
     t1 = high_resolution_clock::now();
-    pre_encrypt(alice_ciphers[i], alice_key, msg);
+    pre_encrypt(alice_ciphers[i], params, alice_pk, msg);
     t2 = high_resolution_clock::now();
-    encryption[i] = (uint64_t)duration_cast<microseconds>(t2 - t1).count();
+    encrypt[i] = (uint64_t)duration_cast<microseconds>(t2 - t1).count();
 
     t1 = high_resolution_clock::now();
-    pre_generate_re_token(token_to_bob, alice_key, bob_key->pk_2);
+    pre_generate_token(token_to_bob, params, alice_sk, bob_pk);
     t2 = high_resolution_clock::now();
-    token_generation[i] =
+    token_gen[i] =
         (uint64_t)duration_cast<microseconds>(t2 - t1).count();
 
     encoded_token_size = get_encoded_token_size(token_to_bob);
@@ -127,40 +173,46 @@ int run_benchmark(int runs) {
     encode_token(token_to_bob_str, encoded_token_size, token_to_bob);
     t2 = high_resolution_clock::now();
     us = duration_cast<microseconds>(t2 - t1).count();
-    token_encoding[i] = (uint64_t)us;
+    token_encode[i] = (uint64_t)us;
 
     t1 = high_resolution_clock::now();
     decode_token(token_to_bob, token_to_bob_str, encoded_token_size);
     t2 = high_resolution_clock::now();
     us = duration_cast<microseconds>(t2 - t1).count();
-    token_decoding[i] = (uint64_t)us;
+    token_decode[i] = (uint64_t)us;
 
     t1 = high_resolution_clock::now();
-    pre_re_apply(token_to_bob, bob_ciphers[i], alice_ciphers[i]);
+    pre_apply_token(token_to_bob, bob_ciphers[i], alice_ciphers[i]);
     t2 = high_resolution_clock::now();
-    re_encryption[i] = (uint64_t)duration_cast<microseconds>(t2 - t1).count();
+    re_encrypt[i] = (uint64_t)duration_cast<microseconds>(t2 - t1).count();
 
     t1 = high_resolution_clock::now();
-    pre_decrypt(res, bob_key, bob_ciphers[i]);
+    pre_decrypt(res, params, bob_sk, bob_ciphers[i]);
     t2 = high_resolution_clock::now();
-    decryption[i] = (uint64_t)duration_cast<microseconds>(t2 - t1).count();
+    decrypt[i] = (uint64_t)duration_cast<microseconds>(t2 - t1).count();
   }
-  print_stats("Key Generation", "us", runs, key_generation);
-  print_stats("Key Derivation", "us", runs, key_derivation);
-  print_stats("Key Encoding", "us", runs, key_encoding);
-  print_stats("Key Decoding", "us", runs, key_decoding);
-  print_stats("Encryption", "us", runs, encryption);
-  print_stats("Token Generation", "us", runs, token_generation);
-  print_stats("Token Encoding", "us", runs, token_encoding);
-  print_stats("Token Decoding", "us", runs, token_decoding);
-  print_stats("Re-Encryption", "us", runs, re_encryption);
-  print_stats("Decryption", "us", runs, decryption);
+  print_stats("Public Parameter Generation", "us", runs, params_gen);
+  print_stats("Public Parameter Encoding", "us", runs, params_encode);
+  print_stats("Public Parameter Decoding", "us", runs, params_decode);
+  print_stats("Secret Key Generation", "us", runs, sk_gen);
+  print_stats("Secret Key Encoding", "us", runs, sk_encode);
+  print_stats("Secret Key Decoding", "us", runs, sk_decode);
+  print_stats("Public Key Generation", "us", runs, pk_gen);
+  print_stats("Public Key Encoding", "us", runs, pk_encode);
+  print_stats("Public Key Decoding", "us", runs, pk_decode);
+  print_stats("Key Derivation", "us", runs, key_derive);
+  print_stats("Encryption", "us", runs, encrypt);
+  print_stats("Token Generation", "us", runs, token_gen);
+  print_stats("Token Encoding", "us", runs, token_encode);
+  print_stats("Token Decoding", "us", runs, token_decode);
+  print_stats("Re-Encryption", "us", runs, re_encrypt);
+  print_stats("Decryption", "us", runs, decrypt);
 }
 
 int main(int argc, char *argv[]) {
   pre_init();
 
-  int runs = 1000;
+  int runs = 100;
   if (argc >= 2) {
     runs = atoi(argv[1]);
   }
