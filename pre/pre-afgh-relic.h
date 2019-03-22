@@ -46,8 +46,6 @@
 #include <relic/relic_md.h>
 #include <relic/relic_pc.h>
 
-#define ENCODING_SIZE 2
-
 ////////////////////////////////////////
 //         Struct definitions         //
 ////////////////////////////////////////

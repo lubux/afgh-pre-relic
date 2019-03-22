@@ -37,6 +37,8 @@
 #include "pre-afgh-relic.h"
 #include <limits.h>
 
+#define ENCODING_SIZE 2
+
 ////////////////////////////////////////
 //    Encoding/Decoding Functions     //
 ////////////////////////////////////////
