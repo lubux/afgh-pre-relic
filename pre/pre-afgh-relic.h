@@ -73,11 +73,11 @@ typedef struct pre_params_s pre_params_t[1];
 /**
  *  PRE secret key
  *
- *  a_inverse is cached in the secret key to avoid redundant computation.
+ *  a_inv is cached in the secret key to avoid redundant computation.
  */
 struct pre_sk_s {
   bn_t a;         // secret factor a
-  bn_t a_inverse; // 1/a mod n (n = order of g1)
+  bn_t a_inv; // 1/a mod n (n = order of g1)
 };
 typedef struct pre_sk_s *pre_rel_sk_ptr;
 typedef struct pre_sk_s pre_sk_t[1];
@@ -126,31 +126,83 @@ typedef struct pre_token_s pre_token_t[1];
  * Initializes the PRE library
  *
  * *** Must be called before first use! ***
+ *
+ * @return STS_OK if ok else STS_ERR
  */
 int pre_init();
 
 /**
  * Cleans up PRE library state
+ *
+ * @return STS_OK if ok else STS_ERR
  */
 int pre_cleanup();
 
 ////////////////////////////////////////
-//      Message Utility Functions     //
+//      Key generation Functions      //
 ////////////////////////////////////////
 
 /**
- * Generate a random gt element for encryption
+ * Generates suitable public parameters for the scheme
  *
+ * @param params the resulting public parameters
  * @return STS_OK if ok else STS_ERR
  */
-int pre_rand_message(gt_t msg);
+int pre_generate_params(pre_params_t params);
 
 /**
- * Maps a gt message to an encryption key using the standardized KDF2 function
+ * Generates a random secret key
  *
+ * @param sk the resulting secret key
+ * @param params the public parameters
  * @return STS_OK if ok else STS_ERR
  */
-int pre_map_to_key(uint8_t *key, int key_len, gt_t msg);
+int pre_generate_sk(pre_sk_t sk, pre_params_t params);
+
+/**
+ * Derives the public key corresponding to the given secret key
+ *
+ * @param pk the resulting public key
+ * @param params the public parameters
+ * @param sk the secret key
+ * @return STS_OK if ok else STS_ERR
+ */
+int pre_derive_pk(pre_pk_t pk, pre_params_t params, pre_sk_t sk);
+
+/**
+ * Derives a new public key from an existing one. The resulting
+ * key will correspond to the secret key derived using pre_derive_next_keypair.
+ *
+ * @param new_pk the resulting public key
+ * @param old_pk the existing public key
+ * @return STS_OK if ok else STS_ERR
+ */
+int pre_derive_next_pk(pre_pk_t new_pk, pre_pk_t old_pk);
+
+/**
+ * Derives new secret and public keys from an existing pair
+ *
+ * @param new_sk the resulting secret key
+ * @param new_pk the resulting public key
+ * @param params the public parameters
+ * @param old_sk the existing secret key
+ * @param old_pk the existing public key
+ * @return STS_OK if ok else STS_ERR
+ */
+int pre_derive_next_keypair(pre_sk_t new_sk, pre_pk_t new_pk, 
+		pre_params_t params, pre_sk_t old_sk, pre_pk_t old_pk);
+
+/**
+ * Derives the re-encryption token from sk to pk
+ *
+ * @param token the resulting token
+ * @param params initialized public parameters
+ * @param sk an initialized secret key
+ * @param pk an initialized public key
+ * @return STS_OK if ok else STS_ERR
+ */
+int pre_generate_token(pre_token_t token, pre_params_t params,
+		pre_sk_t sk, pre_pk_t pk);
 
 ////////////////////////////////////////
 //          Cleanup Functions         //
@@ -197,26 +249,50 @@ int pre_clean_token(pre_token_t token);
 int pre_clean_cipher(pre_ciphertext_t cipher);
 
 ////////////////////////////////////////
-//      Key generation Functions      //
+//      Message Utility Functions     //
 ////////////////////////////////////////
 
-int pre_generate_params(pre_params_t params);
+/**
+ * Generate a random gt element for encryption
+ *
+ * @return STS_OK if ok else STS_ERR
+ */
+int pre_rand_message(gt_t msg);
 
-int pre_generate_sk(pre_params_t params, pre_sk_t sk);
-
-int pre_generate_pk(pre_params_t params, pre_sk_t sk, pre_pk_t pk);
-
-int pre_derive_next_keypair(pre_sk_t sk, pre_pk_t pk);
-
-int pre_generate_token(pre_token_t token, pre_params_t params, pre_sk_t sk, pre_pk_t pk);
+/**
+ * Maps a gt message to an encryption key using the standardized KDF2 function
+ *
+ * @return STS_OK if ok else STS_ERR
+ */
+int pre_map_to_key(uint8_t *key, int key_len, gt_t msg);
 
 ////////////////////////////////////////
 //  Encryption/Decryption Functions   //
 ////////////////////////////////////////
 
-int pre_encrypt(pre_ciphertext_t ciphertext, pre_params_t params, pre_pk_t pk, gt_t plaintext);
+/**
+ * Encrypts a message to the given public key
+ *
+ * @param ciphertext the resulting ciphertext
+ * @param params the public parameters
+ * @param pk the public key
+ * @param plaintext the message to encrypt
+ * @return STS_OK if ok else STS_ERR
+ */
+int pre_encrypt(pre_ciphertext_t ciphertext, pre_params_t params,
+		pre_pk_t pk, gt_t plaintext);
 
-int pre_decrypt(gt_t plaintext, pre_params_t params, pre_sk_t sk, pre_ciphertext_t ciphertext);
+/**
+ * Decrypts a ciphertext with the given secret key
+ *
+ * @param plaintext the resulting plaintext
+ * @param params the public parameters
+ * @param sk the secret key
+ * @param ciphertext the encrypted message
+ * @return STS_OK if ok else STS_ERR
+ */
+int pre_decrypt(gt_t plaintext, pre_params_t params,
+		pre_sk_t sk, pre_ciphertext_t ciphertext);
 
 /**
  * Re-encrypts the given ciphertext with the provided token

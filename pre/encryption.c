@@ -37,7 +37,8 @@
 #include "pre-afgh-relic.h"
 #include <limits.h>
 
-int pre_encrypt(pre_ciphertext_t ciphertext, pre_params_t params, pre_pk_t pk, gt_t plaintext) {
+int pre_encrypt(pre_ciphertext_t ciphertext, pre_params_t params,
+		pre_pk_t pk, gt_t plaintext) {
   int result = STS_OK;
 
   bn_t r;
@@ -91,7 +92,8 @@ int pre_encrypt(pre_ciphertext_t ciphertext, pre_params_t params, pre_pk_t pk, g
   return result;
 }
 
-int pre_decrypt(gt_t plaintext, pre_params_t params, pre_sk_t sk, pre_ciphertext_t ciphertext) {
+int pre_decrypt(gt_t plaintext, pre_params_t params,
+		pre_sk_t sk, pre_ciphertext_t ciphertext) {
   int result = STS_OK;
 
   g2_t t1;

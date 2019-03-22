@@ -98,33 +98,33 @@ int pre_generate_params(pre_params_t params) {
   return result;
 }
 
-int pre_generate_sk(pre_params_t params, pre_sk_t sk) {
+int pre_generate_sk(pre_sk_t sk, pre_params_t params) {
   int result = STS_OK;
 
-  bn_null(sk->sk);
-  bn_null(sk->inverse);
+  bn_null(sk->a);
+  bn_null(sk->a_inv);
 
   TRY {
-    bn_new(sk->sk);
-    bn_new(sk->inverse);
+    bn_new(sk->a);
+    bn_new(sk->a_inv);
 
     // generate a random value, a, as secret key
-    bn_rand_mod(sk->sk, params->g1_ord);
+    bn_rand_mod(sk->a, params->g1_ord);
 
     // compute 1/a mod n for use later
-    mod_inverse(sk->inverse, sk->sk, params->g1_ord);
+    mod_inverse(sk->a_inv, sk->a, params->g1_ord);
   }
   CATCH_ANY {
     result = STS_ERR;
 
-    bn_null(sk->sk);
-    bn_null(sk->inverse);
+    bn_null(sk->a);
+    bn_null(sk->a_inv);
   };
 
   return result;
 }
 
-int pre_generate_pk(pre_params_t params, pre_sk_t sk, pre_pk_t pk) {
+int pre_derive_pk(pre_pk_t pk, pre_params_t params, pre_sk_t sk) {
   int result = STS_OK;
 
   g1_null(pk->pk1);
@@ -135,8 +135,8 @@ int pre_generate_pk(pre_params_t params, pre_sk_t sk, pre_pk_t pk) {
     g2_new(pk->pk2);
 
     // compute the public key as pk1 = g1^a, pk2 = g2^a
-    g1_mul_gen(pk->pk1, sk->sk);
-    g2_mul_gen(pk->pk2, sk->sk);
+    g1_mul_gen(pk->pk1, sk->a);
+    g2_mul_gen(pk->pk2, sk->a);
   }
   CATCH_ANY {
     result = STS_ERR;
@@ -187,20 +187,26 @@ int hash_pk(bn_t hash, g1_t g1_hash, g2_t g2_hash, pre_pk_t pk) {
   return result;
 }
 
-int pre_derive_next_pk(pre_pk_t pk) {
+int pre_derive_next_pk(pre_pk_t new_pk, pre_pk_t old_pk) {
   int result = STS_OK;
 
   bn_t hash;
   g1_t g1_hash;
   g2_t g2_hash;
 
+  g1_null(new_pk->pk1);
+  g2_null(new_pk->pk2);
+
   TRY {
-    assert(pk);
+    assert(old_pk);
 
-    hash_pk(hash, g1_hash, g2_hash, pk);
+    g1_new(new_pk->pk1);
+    g1_new(new_pk->pk2);
 
-    g1_add(pk->pk1, pk->pk1, g1_hash);
-    g2_add(pk->pk2, pk->pk2, g2_hash);
+    hash_pk(hash, g1_hash, g2_hash, old_pk);
+
+    g1_add(new_pk->pk1, old_pk->pk1, g1_hash);
+    g2_add(new_pk->pk2, old_pk->pk2, g2_hash);
   }
   CATCH_ANY {
     result = STS_ERR;
@@ -208,6 +214,8 @@ int pre_derive_next_pk(pre_pk_t pk) {
     bn_free(hash);
     g1_free(g1_hash);
     g2_free(g2_hash);
+    g1_free(new_pk->pk1);
+    g2_free(new_pk->pk2);
   }
   FINALLY {
     bn_free(hash);
@@ -218,22 +226,35 @@ int pre_derive_next_pk(pre_pk_t pk) {
   return result;
 }
 
-int pre_derive_next_keypair(pre_sk_t sk, pre_pk_t pk) {
+int pre_derive_next_keypair(pre_sk_t new_sk, pre_pk_t new_pk, 
+		pre_params_t params, pre_sk_t old_sk, pre_pk_t old_pk) {
   int result = STS_OK;
 
   bn_t hash;
   g1_t g1_hash;
   g2_t g2_hash;
 
+  bn_null(new_sk->a);
+  bn_null(new_sk->a_inv);
+  g1_null(new_pk->pk1);
+  g2_null(new_pk->pk2);
+
   TRY {
-    assert(pk);
+    assert(old_sk);
+    assert(old_pk);
 
-    hash_pk(hash, g1_hash, g2_hash, pk);
+    bn_new(new_sk->a);
+    bn_new(new_sk->a_inv);
+    g1_new(new_pk->pk1);
+    g2_new(new_pk->pk2);
 
-    g1_add(pk->pk1, pk->pk1, g1_hash);
-    g2_add(pk->pk2, pk->pk2, g2_hash);
+    hash_pk(hash, g1_hash, g2_hash, old_pk);
 
-    bn_add(sk->sk, sk->sk, hash);
+    g1_add(new_pk->pk1, old_pk->pk1, g1_hash);
+    g2_add(new_pk->pk2, old_pk->pk2, g2_hash);
+
+    bn_add(new_sk->a, old_sk->a, hash);
+    mod_inverse(new_sk->a_inv, new_sk->a, params->g1_ord);
   }
   CATCH_ANY {
     result = STS_ERR;
@@ -241,6 +262,10 @@ int pre_derive_next_keypair(pre_sk_t sk, pre_pk_t pk) {
     bn_free(hash);
     g1_free(g1_hash);
     g2_free(g2_hash);
+    bn_free(new_sk->a);
+    bn_free(new_sk->a_inv);
+    g1_free(new_pk->pk1);
+    g1_free(new_pk->pk2);
   }
   FINALLY {
     bn_free(hash);
@@ -251,7 +276,8 @@ int pre_derive_next_keypair(pre_sk_t sk, pre_pk_t pk) {
   return result;
 }
 
-int pre_generate_token(pre_token_t token, pre_params_t params, pre_sk_t sk, pre_pk_t pk) {
+int pre_generate_token(pre_token_t token, pre_params_t params,
+		pre_sk_t sk, pre_pk_t pk) {
   int result = STS_OK;
 
   g2_null(token->token);
@@ -264,7 +290,7 @@ int pre_generate_token(pre_token_t token, pre_params_t params, pre_sk_t sk, pre_
     g2_new(token->token);
 
     /* g^b ^ 1/a*/
-    g2_mul(token->token, pk->pk2, sk->inverse);
+    g2_mul(token->token, pk->pk2, sk->a_inv);
   }
   CATCH_ANY {
     result = STS_ERR;
