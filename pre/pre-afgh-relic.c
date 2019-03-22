@@ -40,7 +40,7 @@
 // Finds the mod inverse of a modulo m
 int mod_inverse(bn_t res, bn_t a, bn_t m) {
   bn_t tempGcd, temp;
-  int result = STS_ERR;
+  int result = STS_OK;
 
   bn_null(tempGcd);
   bn_null(temp);
@@ -54,7 +54,6 @@ int mod_inverse(bn_t res, bn_t a, bn_t m) {
     if (bn_sign(res) == BN_NEG) {
       bn_add(res, res, m);
     }
-    result = STS_OK;
   }
   CATCH_ANY { result = STS_ERR; }
   FINALLY {
@@ -86,7 +85,7 @@ int pre_deinit() {
 }
 
 int pre_params_clear(pre_params_t params) {
-  int result = STS_ERR;
+  int result = STS_OK;
 
   TRY {
     assert(params);
@@ -94,8 +93,6 @@ int pre_params_clear(pre_params_t params) {
     gt_free(params->Z);
     g1_free(params->g1);
     g2_free(params->g2);
-
-    result = STS_OK;
   }
   CATCH_ANY { result = STS_ERR; }
 
@@ -103,15 +100,13 @@ int pre_params_clear(pre_params_t params) {
 }
 
 int pre_sk_clear(pre_sk_t sk) {
-  int result = STS_ERR;
+  int result = STS_OK;
 
   TRY {
     assert(sk);
 
     bn_free(sk->sk);
     bn_free(sk->inverse);
-
-    result = STS_OK;
   }
   CATCH_ANY { result = STS_ERR; }
 
@@ -119,15 +114,13 @@ int pre_sk_clear(pre_sk_t sk) {
 }
 
 int pre_pk_clear(pre_pk_t pk) {
-  int result = STS_ERR;
+  int result = STS_OK;
 
   TRY {
     assert(pk);
 
     g1_free(pk->pk1);
     g2_free(pk->pk2);
-
-    result = STS_OK;
   }
   CATCH_ANY { result = STS_ERR; }
 
@@ -135,11 +128,11 @@ int pre_pk_clear(pre_pk_t pk) {
 }
 
 int pre_rand_message(gt_t msg) {
-  int result = STS_ERR;
+  int result = STS_OK;
+
   TRY {
     gt_new(msg);
     gt_rand(msg);
-    result = STS_OK;
   }
   CATCH_ANY { result = STS_ERR; }
 
@@ -147,9 +140,11 @@ int pre_rand_message(gt_t msg) {
 }
 
 int pre_map_to_key(uint8_t *key, int key_len, gt_t msg) {
-  int result = STS_ERR;
+  int result = STS_OK;
+
   uint8_t *buffer;
   size_t buff_size;
+
   TRY {
     buff_size = (size_t)gt_size_bin(msg, 1);
     buffer = (uint8_t *)malloc(buff_size);
@@ -158,7 +153,6 @@ int pre_map_to_key(uint8_t *key, int key_len, gt_t msg) {
     }
     gt_write_bin(buffer, (int)buff_size, msg, 1);
     md_kdf2(key, key_len, buffer, (int)buff_size);
-    result = STS_OK;
   }
   CATCH_ANY { result = STS_ERR; }
   FINALLY {
@@ -172,7 +166,7 @@ int pre_map_to_key(uint8_t *key, int key_len, gt_t msg) {
 
 // cleanup and free sub-structures in 'ciphertext' (only if already initialized)
 int pre_ciphertext_clear(pre_ciphertext_t ciphertext) {
-  int result = STS_ERR;
+  int result = STS_OK;
 
   TRY {
     assert(ciphertext);
@@ -190,7 +184,6 @@ int pre_ciphertext_clear(pre_ciphertext_t ciphertext) {
       gt_free(ciphertext->C2_GT);
       ciphertext->group = '\0';
     }
-    result = STS_OK;
   }
   CATCH_ANY { result = STS_ERR; }
 
@@ -198,7 +191,7 @@ int pre_ciphertext_clear(pre_ciphertext_t ciphertext) {
 }
 
 int pre_generate_params(pre_params_t params) {
-  int result = STS_ERR;
+  int result = STS_OK;
 
   g1_null(params->g1);
   g2_null(params->g2);
@@ -218,8 +211,6 @@ int pre_generate_params(pre_params_t params) {
     pc_map(params->Z, params->g1, params->g2);
 
     g1_get_ord(params->g1_ord);
-
-    result = STS_OK;
   }
   CATCH_ANY {
     result = STS_ERR;
@@ -234,7 +225,7 @@ int pre_generate_params(pre_params_t params) {
 }
 
 int pre_generate_sk(pre_params_t params, pre_sk_t sk) {
-  int result = STS_ERR;
+  int result = STS_OK;
 
   bn_null(sk->sk);
   bn_null(sk->inverse);
@@ -248,8 +239,6 @@ int pre_generate_sk(pre_params_t params, pre_sk_t sk) {
 
     // compute 1/a mod n for use later
     mod_inverse(sk->inverse, sk->sk, params->g1_ord);
-
-    result = STS_OK;
   }
   CATCH_ANY {
     result = STS_ERR;
@@ -262,7 +251,7 @@ int pre_generate_sk(pre_params_t params, pre_sk_t sk) {
 }
 
 int pre_generate_pk(pre_params_t params, pre_sk_t sk, pre_pk_t pk) {
-  int result = STS_ERR;
+  int result = STS_OK;
 
   g1_null(pk->pk1);
   g2_null(pk->pk2);
@@ -274,8 +263,6 @@ int pre_generate_pk(pre_params_t params, pre_sk_t sk, pre_pk_t pk) {
     // compute the public key as pk1 = g1^a, pk2 = g2^a
     g1_mul_gen(pk->pk1, sk->sk);
     g2_mul_gen(pk->pk2, sk->sk);
-
-    result = STS_OK;
   }
   CATCH_ANY {
     result = STS_ERR;
@@ -287,87 +274,110 @@ int pre_generate_pk(pre_params_t params, pre_sk_t sk, pre_pk_t pk) {
   return result;
 }
 
-int pre_derive_next_pk(pre_pk_t pk) {
-  int size, result = STS_ERR;
-  bn_t hash_int;
-  g1_t g1_hash_element;
-  g2_t g2_hash_element;
+int hash_pk(bn_t hash, g1_t g1_hash, g2_t g2_hash, pre_pk_t pk) { 
+  int result = STS_ERR;
 
-  bn_null(hash_int);
+  int size;
+
+  bn_null(hash);
+  g1_null(g1_hash);
+  g2_null(g2_hash);
   TRY {
     assert(pk);
 
-    bn_new(hash_int);
-    g1_new(g1_hash_element);
-    g2_new(g2_hash_element);
+    bn_new(hash);
+    g1_new(g1_hash);
+    g2_new(g2_hash);
 
     size = g1_size_bin(pk->pk1, 1);
-    uint8_t buf[size], hash[64];
+    uint8_t buf[size], hash_vector[64];
     g1_write_bin(buf, size, pk->pk1, 1);
-    md_map_sh512(hash, buf, size);
-    bn_read_bin(hash_int, hash, 64);
+    md_map_sh512(hash_vector, buf, size);
+    bn_read_bin(hash, hash_vector, 64);
 
-    g1_mul_gen(g1_hash_element, hash_int);
-    g2_mul_gen(g2_hash_element, hash_int);
-
-    g1_add(pk->pk1, pk->pk1, g1_hash_element);
-    g2_add(pk->pk2, pk->pk2, g2_hash_element);
-
-    result = STS_OK;
+    g1_mul_gen(g1_hash, hash);
+    g2_mul_gen(g2_hash, hash);
   }
   CATCH_ANY {
     result = STS_ERR;
+
+    bn_null(hash_int);
+    g1_null(g1_hash);
+    g2_null(g2_hash);
   }
   FINALLY {
     bn_free(hash_int);
+  }
+
+  return result;
+}
+
+int pre_derive_next_pk(pre_pk_t pk) {
+  int result = STS_OK;
+
+  bn_t hash;
+  g1_t g1_hash;
+  g2_t g2_hash;
+
+  TRY {
+    assert(pk);
+
+    hash_pk(hash, g1_hash, g2_hash, pk);
+
+    g1_add(pk->pk1, pk->pk1, g1_hash);
+    g2_add(pk->pk2, pk->pk2, g2_hash);
+  }
+  CATCH_ANY {
+    result = STS_ERR;
+
+    bn_free(hash);
+    g1_free(g1_hash);
+    g2_free(g2_hash);
+  }
+  FINALLY {
+    bn_free(hash);
+    g1_free(g1_hash);
+    g2_free(g2_hash);
   }
 
   return result;
 }
 
 int pre_derive_next_keypair(pre_sk_t sk, pre_pk_t pk) {
-  int size, result = STS_ERR;
-  bn_t hash_int;
-  g1_t g1_hash_element;
-  g2_t g2_hash_element;
+  int result = STS_OK;
 
-  bn_null(hash_int);
+  bn_t hash;
+  g1_t g1_hash;
+  g2_t g2_hash;
+
   TRY {
-    assert(sk);
     assert(pk);
 
-    bn_new(hash_int);
-    g1_new(g1_hash_element);
-    g2_new(g2_hash_element);
+    hash_pk(hash, g1_hash, g2_hash, pk);
 
-    size = g1_size_bin(pk->pk1, 1);
-    uint8_t buf[size], hash[64];
-    g1_write_bin(buf, size, pk->pk1, 1);
-    md_map_sh512(hash, buf, size);
-    bn_read_bin(hash_int, hash, 64);
+    g1_add(pk->pk1, pk->pk1, g1_hash);
+    g2_add(pk->pk2, pk->pk2, g2_hash);
 
-    g1_mul_gen(g1_hash_element, hash_int);
-    g2_mul_gen(g2_hash_element, hash_int);
-
-    g1_add(pk->pk1, pk->pk1, g1_hash_element);
-    g2_add(pk->pk2, pk->pk2, g2_hash_element);
-
-    bn_add(sk->sk, sk->sk, hash_int);
-
-    result = STS_OK;
+    bn_add(sk->sk, sk->sk, hash);
   }
   CATCH_ANY {
     result = STS_ERR;
+
+    bn_free(hash);
+    g1_free(g1_hash);
+    g2_free(g2_hash);
   }
   FINALLY {
-    bn_free(hash_int);
+    bn_free(hash);
+    g1_free(g1_hash);
+    g2_free(g2_hash);
   }
 
   return result;
 }
 
 int pre_generate_token(pre_token_t token, pre_params_t params, pre_sk_t sk, pre_pk_t pk) {
-  int result = STS_ERR;
+  int result = STS_OK;
 
   g2_null(token->token);
   TRY {
@@ -380,8 +390,6 @@ int pre_generate_token(pre_token_t token, pre_params_t params, pre_sk_t sk, pre_
 
     /* g^b ^ 1/a*/
     g2_mul(token->token, pk->pk2, sk->inverse);
-
-    result = STS_OK;
   }
   CATCH_ANY {
     result = STS_ERR;
@@ -392,7 +400,8 @@ int pre_generate_token(pre_token_t token, pre_params_t params, pre_sk_t sk, pre_
 }
 
 int pre_encrypt(pre_ciphertext_t ciphertext, pre_params_t params, pre_pk_t pk, gt_t plaintext) {
-  int result = STS_ERR;
+  int result = STS_OK;
+
   bn_t r;
 
   bn_null(r);
@@ -431,8 +440,6 @@ int pre_encrypt(pre_ciphertext_t ciphertext, pre_params_t params, pre_pk_t pk, g
     /* Compute C2 part: G^ar = pk ^r*/
     /* g^ar = pk^r */
     g1_mul(ciphertext->C2_G1, pk->pk1, r);
-
-    result = STS_OK;
   }
   CATCH_ANY {
     result = STS_ERR;
@@ -447,7 +454,8 @@ int pre_encrypt(pre_ciphertext_t ciphertext, pre_params_t params, pre_pk_t pk, g
 }
 
 int pre_decrypt(gt_t plaintext, pre_params_t params, pre_sk_t sk, pre_ciphertext_t ciphertext) {
-  int result = STS_ERR;
+  int result = STS_OK;
+
   g2_t t1;
   gt_t t0;
 
@@ -491,8 +499,6 @@ int pre_decrypt(gt_t plaintext, pre_params_t params, pre_sk_t sk, pre_ciphertext
     /* C1 / e(C2, g^a^-1) or C1/C2^(1/a) */
     gt_inv(t0, plaintext);
     gt_mul(plaintext, ciphertext->C1, t0);
-
-    result = STS_OK;
   }
   CATCH_ANY { result = STS_ERR; }
   FINALLY {
@@ -505,7 +511,8 @@ int pre_decrypt(gt_t plaintext, pre_params_t params, pre_sk_t sk, pre_ciphertext
 
 int pre_apply_token(pre_token_t token, pre_ciphertext_t res,
                  pre_ciphertext_t ciphertext) {
-  int result;
+  int result = STS_OK;
+
   TRY {
     assert(token);
     assert(res);
@@ -523,7 +530,6 @@ int pre_apply_token(pre_token_t token, pre_ciphertext_t res,
     pc_map(res->C2_GT, ciphertext->C2_G1, token->token);
 
     res->group = PRE_REL_CIPHERTEXT_IN_GT_GROUP;
-    result = STS_OK;
   }
   CATCH_ANY {
     result = STS_ERR;
