@@ -46,16 +46,20 @@
 #include <relic/relic_md.h>
 #include <relic/relic_pc.h>
 
-#define PRE_REL_KEYS_TYPE_SECRET 's'
-#define PRE_REL_KEYS_TYPE_ONLY_PUBLIC 'p'
-
 #define PRE_REL_CIPHERTEXT_IN_G_GROUP '1'
 #define PRE_REL_CIPHERTEXT_IN_GT_GROUP '2'
 
 #define ENCODING_SIZE 2
 
+////////////////////////////////////////
+//         Struct definitions         //
+////////////////////////////////////////
+
 /**
  *  PRE public parameters
+ *
+ *  These must be shared by public/private keypairs that are
+ *  encrypting/decrypting the same messages.
  */
 struct pre_params_s {
   g1_t g1;     // generator for G1
@@ -68,10 +72,12 @@ typedef struct pre_params_s pre_params_t[1];
 
 /**
  *  PRE secret key
+ *
+ *  a_inverse is cached in the secret key to avoid redundant computation.
  */
 struct pre_sk_s {
-  bn_t sk;      // secret factor a
-  bn_t inverse; // 1/a mod n (n = order of g1)
+  bn_t a;         // secret factor a
+  bn_t a_inverse; // 1/a mod n (n = order of g1)
 };
 typedef struct pre_sk_s *pre_rel_sk_ptr;
 typedef struct pre_sk_s pre_sk_t[1];
@@ -86,93 +92,13 @@ struct pre_pk_s {
 typedef struct pre_pk_s *pre_rel_pk_ptr;
 typedef struct pre_pk_s pre_pk_t[1];
 
-int get_encoded_params_size(pre_params_t params);
-
-int encode_params(char *buff, int size, pre_params_t params);
-
-int decode_params(pre_params_t params, char *buff, int size);
-
-int get_encoded_sk_size(pre_sk_t sk);
-
-int encode_sk(char *buff, int size, pre_sk_t sk);
-
-int decode_sk(pre_sk_t sk, char *buff, int size);
-
-int get_encoded_pk_size(pre_pk_t pk);
-
-int encode_pk(char *buff, int size, pre_pk_t pk);
-
 /**
- * Decodes the encoded key from a buffer.
- * @param key the keys
- * @param buff the buffer containing the encoded key
- * @param size the buffer size of the encoded key
- * @return STS_OK if ok else STS_ERR
- */
-int decode_pk(pre_pk_t pk, char *buff, int size);
-
-
-/**
- * Returns the encoded msg size of the provided msg
- * @param msg
- * @return the size in bytes of the encoded msg
- */
-int get_encoded_msg_size(gt_t msg);
-
-/**
- * Encodes the given msg as a byte array.
- * @param buff the allocated buffer for the encoding
- * @param size the allocated buffer size
- * @param msg the msg
- * @return STS_OK if ok else STS_ERR
- */
-int encode_msg(char *buff, int size, gt_t msg);
-
-/**
- * Decodes the encoded msg from a buffer.
- * @param msg the msg
- * @param buff the buffer containing the encoded msg
- * @param size the buffer size of the encoded msg
- * @return STS_OK if ok else STS_ERR
- */
-int decode_msg(gt_t msg, char *buff, int size);
-
-/**
- * Represents a PRE re-encryption token
- */
-struct pre_token_s {
-  g2_t token;
-};
-typedef struct pre_token_s *pre_token_ptr;
-typedef struct pre_token_s pre_token_t[1];
-
-/**
- * Returns the encoded token size of the provided token
- * @param token the PRE token
- * @return the size in bytes of the encoded token
- */
-int get_encoded_token_size(pre_token_t token);
-
-/**
- * Encodes the given token as a byte array.
- * @param buff the allocated buffer for the encoding
- * @param size the allocated buffer size
- * @param token the token
- * @return STS_OK if ok else STS_ERR
- */
-int encode_token(char *buff, int size, pre_token_t token);
-
-/**
- * Decodes the encoded token from a byte buffer.
- * @param token the token
- * @param buff the buffer containing the encoded token
- * @param size the buffer size of the encoded token
- * @return STS_OK if ok else STS_ERR
- */
-int decode_token(pre_token_t token, char *buff, int size);
-
-/**
- * The representation of a PRE ciphertext.
+ * PRE ciphertext
+ *
+ * In the AFGH scheme, ciphertexts that have been encrypted with a public key
+ * consist of an element in GT and an element in G1, while those that have been
+ * re-encrypted with a token consist of two elements in G2. The 'group' field
+ * denotes which of these types a ciphertext is.
  */
 struct pre_ciphertext_s {
   gt_t C1;    // ciphertext part 1
@@ -184,74 +110,95 @@ typedef struct pre_ciphertext_s *pre_rel_ciphertext_ptr;
 typedef struct pre_ciphertext_s pre_ciphertext_t[1];
 
 /**
- * Returns the encoded token size of the provided ciphertext
- * @param cipher the PRE ciphertext
- * @return the size in bytes of the encoded ciphertext
+ * PRE re-encryption token
  */
-int get_encoded_cipher_size(pre_ciphertext_t cipher);
+struct pre_token_s {
+  g2_t token;
+};
+typedef struct pre_token_s *pre_token_ptr;
+typedef struct pre_token_s pre_token_t[1];
+
+////////////////////////////////////////
+//      Initialization Functions      //
+////////////////////////////////////////
 
 /**
- * Encodes the given ciphertext as a byte array.
- * @param buff the allocated buffer for the encoding
- * @param size the allocated buffer size
- * @param cipher the ciphertext
- * @return STS_OK if ok else STS_ERR
- */
-int encode_cipher(char *buff, int size, pre_ciphertext_t cipher);
-
-/**
- * Decodes the encoded ciphertext from a byte buffer.
- * @param cipher the ciphertext
- * @param buff the buffer containing the encoded ciphertext
- * @param size the buffer size of the encoded ciphertext
- * @return STS_OK if ok else STS_ERR
- */
-int decode_cipher(pre_ciphertext_t cipher, char *buff, int size);
-
-/**
- * Inits the PRE libray (HAS TO BE CALLED BEFORE USE!)
- * @return  STS_OK if ok else STS_ERR
+ * Initializes the PRE library
+ *
+ * *** Must be called before first use! ***
  */
 int pre_init();
 
 /**
- * Deinits the PRE library
- * @return STS_OK if ok else STS_ERR
+ * Cleans up PRE library state
  */
-int pre_deinit();
+int pre_cleanup();
+
+////////////////////////////////////////
+//      Message Utility Functions     //
+////////////////////////////////////////
 
 /**
- * Computes a random gt element for encryption
+ * Generate a random gt element for encryption
+ *
  * @return STS_OK if ok else STS_ERR
  */
 int pre_rand_message(gt_t msg);
 
 /**
- * Maps a gt message to an encryption key
+ * Maps a gt message to an encryption key using the standardized KDF2 function
+ *
  * @return STS_OK if ok else STS_ERR
  */
 int pre_map_to_key(uint8_t *key, int key_len, gt_t msg);
 
-/**
- * Free a ciphertext
- * @param cipher
- * @return STS_OK if ok else STS_ERR
- */
-int pre_cipher_clear(pre_ciphertext_t cipher);
+////////////////////////////////////////
+//          Cleanup Functions         //
+////////////////////////////////////////
 
 /**
- * Free a token
- * @param token
+ * Frees all of the fields of a set of public parameters
+ *
+ * @param params the public parameters to clean
  * @return STS_OK if ok else STS_ERR
  */
-int pre_token_clear(pre_token_t token);
+int pre_clean_params(pre_params_t params);
 
 /**
- * Free a ciphertext
- * @param ciphertext
+ * Frees all of the fields of a secret key
+ *
+ * @param sk the secret key to clean
  * @return STS_OK if ok else STS_ERR
  */
-int pre_ciphertext_clear(pre_ciphertext_t ciphertext);
+int pre_clean_sk(pre_params_t sk);
+
+/**
+ * Frees all of the fields of a public key
+ *
+ * @param pk the public key to clean
+ * @return STS_OK if ok else STS_ERR
+ */
+int pre_clean_pk(pre_params_t pk);
+
+/**
+ * Frees all of the fields of a re-encryption token
+ *
+ * @param token the token to clean
+ * @return STS_OK if ok else STS_ERR
+ */
+int pre_clean_token(pre_token_t token);
+
+/**
+ * Frees all of the fields of a ciphertext
+ *
+ * @param cipher the ciphertext to clean
+ * @return STS_OK if ok else STS_ERR
+ */
+int pre_clean_cipher(pre_ciphertext_t cipher);
+
+////////////////////////////////////////
+//      Key generation Functions      //
+////////////////////////////////////////
 
 int pre_generate_params(pre_params_t params);
 
@@ -261,20 +208,196 @@ int pre_generate_pk(pre_params_t params, pre_sk_t sk, pre_pk_t pk);
 
 int pre_derive_next_keypair(pre_sk_t sk, pre_pk_t pk);
 
+int pre_generate_token(pre_token_t token, pre_params_t params, pre_sk_t sk, pre_pk_t pk);
+
+////////////////////////////////////////
+//  Encryption/Decryption Functions   //
+////////////////////////////////////////
+
 int pre_encrypt(pre_ciphertext_t ciphertext, pre_params_t params, pre_pk_t pk, gt_t plaintext);
 
 int pre_decrypt(gt_t plaintext, pre_params_t params, pre_sk_t sk, pre_ciphertext_t ciphertext);
-
-int pre_generate_token(pre_token_t token, pre_params_t params, pre_sk_t sk, pre_pk_t pk);
 
 /**
  * Re-encrypts the given ciphertext with the provided token
  * @param keys the PRE token
  * @param res the resulting ciphertext
  * @param ciphertext th input ciphertext
- * @return  STS_OK if ok else STS_ERR
+ * @return STS_OK if ok else STS_ERR
  */
 int pre_apply_token(pre_token_t token, pre_ciphertext_t res,
                  pre_ciphertext_t ciphertext);
+
+////////////////////////////////////////
+//    Encoding/Decoding Functions     //
+////////////////////////////////////////
+
+/**
+ * Computes the required buffer size to encode a set of public parameters
+ *
+ * @param params the parameters whose encoding size to compute
+ * @return STS_OK if ok else STS_ERR
+ */
+int get_encoded_params_size(pre_params_t params);
+
+/**
+ * Encodes a set of public parameters to a byte buffer
+ *
+ * @param buff the resulting buffer
+ * @param size the size of the buffer
+ * @param params the public parameters to encode
+ * @return STS_OK if ok else STS_ERR
+ */
+int encode_params(char *buff, int size, pre_params_t params);
+
+/**
+ * Decodes a set of public parameters from a byte buffer
+ *
+ * @param params the resulting public parameters
+ * @param buff the buffer containing encoded public parameters
+ * @param size the size of the buffer
+ * @return STS_OK if ok else STS_ERR
+ */
+int decode_params(pre_params_t params, char *buff, int size);
+
+/**
+ * Computes the required buffer size to encode a secret key
+ *
+ * @param sk the secret key whose encoding size to compute
+ * @return STS_OK if ok else STS_ERR
+ */
+int get_encoded_sk_size(pre_sk_t sk);
+
+/**
+ * Encodes a secret key to a byte buffer
+ *
+ * @param buff the resulting buffer
+ * @param size the size of the buffer
+ * @param sk the secret key to encode
+ * @return STS_OK if ok else STS_ERR
+ */
+int encode_sk(char *buff, int size, pre_sk_t sk);
+
+/**
+ * Decodes a secret key from a byte buffer
+ *
+ * @param sk the resulting secret key
+ * @param buff the buffer containing an encoded secret key
+ * @param size the size of the buffer
+ * @return STS_OK if ok else STS_ERR
+ */
+int decode_sk(pre_sk_t sk, char *buff, int size);
+
+/**
+ * Computes the required buffer size to encode a public key
+ *
+ * @param pk the public key whose encoding size to compute
+ * @return STS_OK if ok else STS_ERR
+ */
+int get_encoded_pk_size(pre_pk_t pk);
+
+/**
+ * Encodes a public key to a byte buffer
+ *
+ * @param buff the resulting buffer
+ * @param size the size of the buffer
+ * @param pk the public key to encode
+ * @return STS_OK if ok else STS_ERR
+ */
+int encode_pk(char *buff, int size, pre_pk_t pk);
+
+/**
+ * Decodes a public key from a byte buffer
+ *
+ * @param pk the resulting public key
+ * @param buff the buffer containing an encoded public key
+ * @param size the size of the buffer
+ * @return STS_OK if ok else STS_ERR
+ */
+int decode_pk(pre_pk_t pk, char *buff, int size);
+
+/**
+ * Computes the required buffer size to encode a re-encryption token
+ *
+ * @param token the token whose encoding size to compute
+ * @return STS_OK if ok else STS_ERR
+ */
+int get_encoded_token_size(pre_token_t token);
+
+/**
+ * Encodes a re-encryption token to a byte buffer
+ *
+ * @param buff the resulting buffer
+ * @param size the size of the buffer
+ * @param token the token to encode
+ * @return STS_OK if ok else STS_ERR
+ */
+int encode_token(char *buff, int size, pre_token_t token);
+
+/**
+ * Decodes a re-encryption token from a byte buffer
+ *
+ * @param token the resulting token
+ * @param buff the buffer containing an encoded token
+ * @param size the size of the buffer
+ * @return STS_OK if ok else STS_ERR
+ */
+int decode_token(pre_token_t token, char *buff, int size);
+
+/**
+ * Computes the required buffer size to encode a message
+ *
+ * @param msg the message whose encoding size to compute
+ * @return STS_OK if ok else STS_ERR
+ */
+int get_encoded_msg_size(gt_t msg);
+
+/**
+ * Encodes a message to a byte buffer
+ *
+ * @param buff the resulting buffer
+ * @param size the size of the buffer
+ * @param msg the message to encode
+ * @return STS_OK if ok else STS_ERR
+ */
+int encode_msg(char *buff, int size, gt_t msg);
+
+/**
+ * Decodes a message from a byte buffer
+ *
+ * @param msg the resulting message
+ * @param buff the buffer containing an encoded message
+ * @param size the size of the buffer
+ * @return STS_OK if ok else STS_ERR
+ */
+int decode_msg(gt_t msg, char *buff, int size);
+
+/**
+ * Computes the required buffer size to encode a ciphertext
+ *
+ * @param cipher the ciphertext whose encoding size to compute
+ * @return STS_OK if ok else STS_ERR
+ */
+int get_encoded_cipher_size(pre_ciphertext_t cipher);
+
+/**
+ * Encodes a ciphertext to a byte buffer
+ *
+ * @param buff the resulting buffer
+ * @param size the size of the buffer
+ * @param cipher the ciphertext to encode
+ * @return STS_OK if ok else STS_ERR
+ */
+int encode_cipher(char *buff, int size, pre_ciphertext_t cipher);
+
+/**
+ * Decodes a ciphertext from a byte buffer
+ *
+ * @param cipher the resulting ciphertext
+ * @param buff the buffer containing an encoded ciphertext
+ * @param size the size of the buffer
+ * @return STS_OK if ok else STS_ERR
+ */
+int decode_cipher(pre_ciphertext_t cipher, char *buff, int size);
 
 #endif

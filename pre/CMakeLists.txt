@@ -10,13 +10,12 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-omit-frame-pointer -g -Wall -march=nati
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../bin )
+set(SOURCE_FILES keygen.c encryption.c encoding.c utils.c pre-afgh-relic.h)
 
-set(SOURCE_FILES main.cpp pre-afgh-relic.c pre-afgh-relic.h)
-add_executable(relic_pre ${SOURCE_FILES})
-add_library(pre-afgh-relic SHARED pre-afgh-relic.c pre-afgh-relic.h)
+add_library(pre-afgh-relic SHARED ${SOURCE_FILES})
 
-set(SOURCE_FILES benchmark_pre.cpp pre-afgh-relic.c pre-afgh-relic.h)
-add_executable(relic_pre_re_enc_benchmark ${SOURCE_FILES})
+add_executable(test_pre test.cpp ${SOURCE_FILES})
+add_executable(benchmark_pre benchmark.cpp ${SOURCE_FILES})
 
 target_link_libraries(relic_pre ${RELIC_LOC})
 target_link_libraries(relic_pre_re_enc_benchmark ${RELIC_LOC})
