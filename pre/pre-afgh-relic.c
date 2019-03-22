@@ -955,14 +955,3 @@ int pre_token_clear(pre_token_t token) {
   g2_free(token->token);
   return STS_OK;
 }
-
-int pre_ciphertext_init(pre_ciphertext_t ciphertext, char group) {
-  gt_new(ciphertext->C1);
-  if (group == PRE_REL_CIPHERTEXT_IN_G_GROUP) {
-    g1_new(ciphertext->C2_G1);
-  } else {
-    gt_new(ciphertext->C2_GT);
-  }
-  ciphertext->group = group;
-  return STS_OK;
-}

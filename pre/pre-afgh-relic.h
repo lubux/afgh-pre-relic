@@ -247,14 +247,6 @@ int pre_cipher_clear(pre_ciphertext_t cipher);
 int pre_token_clear(pre_token_t token);
 
 /**
- * Allocates a empty ciphertext )
- * @param ciphertext
- * @param group the goupflag
- * @return STS_OK if ok else STS_ERR
- */
-int pre_ciphertext_init(pre_ciphertext_t ciphertext, char group);
-
-/**
  * Free a ciphertext
  * @param ciphertext
  * @return STS_OK if ok else STS_ERR
