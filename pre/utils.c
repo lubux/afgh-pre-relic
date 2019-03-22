@@ -146,20 +146,23 @@ int pre_clean_ciphertext(pre_ciphertext_t ciphertext) {
 
   TRY {
     assert(ciphertext);
-    assert(ciphertext->C1);
-    assert(ciphertext->C2_G1 || ciphertext->C2_GT);
 
-    if (ciphertext->group ==
-        PRE_REL_CIPHERTEXT_IN_G_GROUP) { // test to detect if the structure is
-                                         // already initialized); could it fail?
-      gt_free(ciphertext->C1);
-      g1_free(ciphertext->C2_G1);
-      ciphertext->group = '\0';
-    } else if (ciphertext->group == PRE_REL_CIPHERTEXT_IN_GT_GROUP) {
-      gt_free(ciphertext->C1);
-      gt_free(ciphertext->C2_GT);
-      ciphertext->group = '\0';
-    }
+    gt_free(ciphertext->C1);
+    g1_free(ciphertext->C2_G1);
+  }
+  CATCH_ANY { result = STS_ERR; }
+
+  return result;
+}
+
+int pre_clean_re_ciphertext(pre_re_ciphertext_t ciphertext) {
+  int result = STS_OK;
+
+  TRY {
+    assert(ciphertext);
+
+    gt_free(ciphertext->C1);
+    gt_free(ciphertext->C2_GT);
   }
   CATCH_ANY { result = STS_ERR; }
 

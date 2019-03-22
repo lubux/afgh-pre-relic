@@ -46,9 +46,6 @@
 #include <relic/relic_md.h>
 #include <relic/relic_pc.h>
 
-#define PRE_REL_CIPHERTEXT_IN_G_GROUP '1'
-#define PRE_REL_CIPHERTEXT_IN_GT_GROUP '2'
-
 #define ENCODING_SIZE 2
 
 ////////////////////////////////////////
@@ -111,21 +108,24 @@ typedef struct pre_plaintext_s *pre_rel_plaintext_ptr;
 typedef struct pre_plaintext_s pre_plaintext_t[1];
 
 /**
- * PRE ciphertext
- *
- * In the AFGH scheme, ciphertexts that have been encrypted with a public key
- * consist of an element in GT and an element in G1, while those that have been
- * re-encrypted with a token consist of two elements in G2. The 'group' field
- * denotes which of these types a ciphertext is.
+ * PRE ciphertext that was encrypted directly a public key
  */
 struct pre_ciphertext_s {
-  gt_t C1;    // ciphertext part 1
-  g1_t C2_G1; // ciphertext part 2 in G1
-  gt_t C2_GT; // ciphertext part 2 in GT
-  char group; // flag to indicate the working group
+  gt_t c1; // ciphertext part 1 in GT
+  g1_t c2; // ciphertext part 2 in G1
 };
 typedef struct pre_ciphertext_s *pre_rel_ciphertext_ptr;
 typedef struct pre_ciphertext_s pre_ciphertext_t[1];
+
+/**
+ * PRE ciphertext that was re-encrypted to a second public key
+ */
+struct pre_re_ciphertext_s {
+  gt_t c1; // ciphertext part 1 in GT
+  gt_t c2; // ciphertext part 2 in GT
+};
+typedef struct pre_re_ciphertext_s *pre_rel_re_ciphertext_ptr;
+typedef struct pre_re_ciphertext_s pre_re_ciphertext_t[1];
 
 ////////////////////////////////////////
 //      Initialization Functions      //
@@ -265,6 +265,14 @@ int pre_clean_plaintext(pre_plaintext_t plaintext);
  */
 int pre_clean_ciphertext(pre_ciphertext_t ciphertext);
 
+/**
+ * Frees all of the fields of a re-encrypted ciphertext
+ *
+ * @param ciphertext the re-encrypted ciphertext to clean
+ * @return STS_OK if ok else STS_ERR
+ */
+int pre_clean_ciphertext(pre_re_ciphertext_t ciphertext);
+
 ////////////////////////////////////////
 //      Message Utility Functions     //
 ////////////////////////////////////////
@@ -312,13 +320,25 @@ int pre_decrypt(pre_plaintext_t plaintext, pre_params_t params,
 		pre_sk_t sk, pre_ciphertext_t ciphertext);
 
 /**
- * Re-encrypts the given ciphertext with the provided token
- * @param keys the PRE token
- * @param res the resulting ciphertext
- * @param ciphertext th input ciphertext
+ * Decrypts a re-encrypted ciphertext with the given secret key
+ *
+ * @param plaintext the resulting plaintext
+ * @param params the public parameters
+ * @param sk the secret key
+ * @param ciphertext the re-encrypted message
  * @return STS_OK if ok else STS_ERR
  */
-int pre_apply_token(pre_token_t token, pre_ciphertext_t res,
+int pre_decrypt_re(pre_plaintext_t plaintext, pre_params_t params,
+		pre_sk_t sk, pre_re_ciphertext_t ciphertext);
+
+/**
+ * Re-encrypts the given ciphertext with the provided token
+ * @param keys the PRE token
+ * @param re_ciphertext the resulting ciphertext
+ * @param ciphertext the input ciphertext
+ * @return STS_OK if ok else STS_ERR
+ */
+int pre_apply_token(pre_re_ciphertext_t re_ciphertext, pre_token_t token,
                  pre_ciphertext_t ciphertext);
 
 ////////////////////////////////////////
@@ -492,5 +512,33 @@ int encode_ciphertext(char *buff, int size, pre_ciphertext_t ciphertext);
  * @return STS_OK if ok else STS_ERR
  */
 int decode_ciphertext(pre_ciphertext_t ciphertext, char *buff, int size);
+
+/**
+ * Computes the required buffer size to encode a re-encrypted ciphertext
+ *
+ * @param ciphertext the re-encrypted ciphertext whose encoding size to compute
+ * @return STS_OK if ok else STS_ERR
+ */
+int get_encoded_re_ciphertext_size(pre_re_ciphertext_t ciphertext);
+
+/**
+ * Encodes a re-encrypted ciphertext to a byte buffer
+ *
+ * @param buff the resulting buffer
+ * @param size the size of the buffer
+ * @param ciphertext the re-encrypted ciphertext to encode
+ * @return STS_OK if ok else STS_ERR
+ */
+int encode_re_ciphertext(char *buff, int size, pre_re_ciphertext_t ciphertext);
+
+/**
+ * Decodes a re-encrypted ciphertext from a byte buffer
+ *
+ * @param ciphertext the resulting re-encrypted ciphertext
+ * @param buff the buffer containing an encoded re-encrypted ciphertext
+ * @param size the size of the buffer
+ * @return STS_OK if ok else STS_ERR
+ */
+int decode_re_ciphertext(pre_re_ciphertext_t ciphertext, char *buff, int size);
 
 #endif

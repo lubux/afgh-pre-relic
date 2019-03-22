@@ -111,29 +111,63 @@ int pre_decrypt(pre_plaintext_t plaintext, pre_params_t params,
     assert(params);
     assert(sk);
     assert(ciphertext);
-    assert((ciphertext->group == PRE_REL_CIPHERTEXT_IN_G_GROUP) ||
-           (ciphertext->group == PRE_REL_CIPHERTEXT_IN_GT_GROUP));
 
     /*
      * M = (M.Z^r) / e(G^ar, G^1/a)
      * M = C1 / e(C2, G^1/a)
      */
 
-    if (ciphertext->group == PRE_REL_CIPHERTEXT_IN_G_GROUP) {
-      /* g ^ 1/a*/
-      g2_mul(t1, params->g2, sk->inverse);
+    /* g ^ 1/a*/
+    g2_mul(t1, params->g2, sk->inverse);
 
-      /* e(g^ar, g^-a) = Z^r */
-      pc_map(plaintext->msg, ciphertext->C2_G1, t1);
-      // pbc_pmesg(3, "Z^r: %B\n", t2);
+    /* e(g^ar, g^-a) = Z^r */
+    pc_map(plaintext->msg, ciphertext->C2_G1, t1);
+    // pbc_pmesg(3, "Z^r: %B\n", t2);
+
+    /* C1 / e(C2, g^a^-1) or C1/C2^(1/a) */
+    gt_inv(t0, plaintext->msg);
+    gt_mul(plaintext->msg, ciphertext->C1, t0);
+  }
+  CATCH_ANY { result = STS_ERR; }
+  FINALLY {
+    gt_free(t0);
+    g1_free(t1);
+  }
+
+  return result;
+}
+
+int pre_decrypt_re(pre_plaintext_t plaintext, pre_params_t params,
+		pre_sk_t sk, pre_re_ciphertext_t ciphertext) {
+  int result = STS_OK;
+
+  g2_t t1;
+  gt_t t0;
+
+  gt_null(t0);
+  g2_null(t1);
+  gt_null(plaintext->msg);
+
+  TRY {
+    gt_new(t0);
+    g2_new(t1);
+    gt_new(plaintext->msg);
+
+    assert(params);
+    assert(sk);
+    assert(ciphertext);
+
+    /*
+     * M = (M.Z^r) / e(G^ar, G^1/a)
+     * M = C1 / e(C2, G^1/a)
+     */
+
+    /* C2 = Z^ar
+     * Compute: Z^ar^(1/a)*/
+    if (bn_is_zero(sk->inverse)) {
+      gt_set_unity(plaintext->msg);
     } else {
-      /* C2 = Z^ar
-       * Compute: Z^ar^(1/a)*/
-      if (bn_is_zero(sk->inverse)) {
-        gt_set_unity(plaintext->msg);
-      } else {
-        gt_exp(plaintext->msg, ciphertext->C2_GT, sk->inverse);
-      }
+      gt_exp(plaintext->msg, ciphertext->C2_GT, sk->inverse);
     }
 
     /* C1 / e(C2, g^a^-1) or C1/C2^(1/a) */
@@ -149,32 +183,30 @@ int pre_decrypt(pre_plaintext_t plaintext, pre_params_t params,
   return result;
 }
 
-int pre_apply_token(pre_token_t token, pre_ciphertext_t res,
+int pre_apply_token(pre_re_ciphertext_t re_ciphertext, pre_token_t token, 
                  pre_ciphertext_t ciphertext) {
   int result = STS_OK;
 
   TRY {
     assert(token);
-    assert(res);
+    assert(re_ciphertext);
     assert(ciphertext);
     assert(ciphertext->group == PRE_REL_CIPHERTEXT_IN_G_GROUP);
-    pre_clean_cipher(res);
+    pre_clean_re_cipher(re_ciphertext);
 
-    gt_new(res->C1);
-    gt_new(res->C2_GT);
+    gt_new(re_ciphertext->C1);
+    gt_new(re_ciphertext->C2_GT);
 
-    gt_copy(res->C1, ciphertext->C1);
+    gt_copy(re_ciphertext->C1, ciphertext->C1);
 
     /* level2: C2 = g^ar */
     /* level1: C2 = e(g^ar, g^(b/a) = Z^br*/
-    pc_map(res->C2_GT, ciphertext->C2_G1, token->token);
-
-    res->group = PRE_REL_CIPHERTEXT_IN_GT_GROUP;
+    pc_map(re_ciphertext->C2_GT, ciphertext->C2_G1, token->token);
   }
   CATCH_ANY {
     result = STS_ERR;
-    gt_null(res->C1);
-    gt_null(res->C2_GT);
+    gt_null(re_ciphertext->C1);
+    gt_null(re_ciphertext->C2_GT);
   }
 
   return result;
