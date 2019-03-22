@@ -38,7 +38,7 @@
 #include <limits.h>
 
 int pre_encrypt(pre_ciphertext_t ciphertext, pre_params_t params,
-		pre_pk_t pk, gt_t plaintext) {
+		pre_pk_t pk, pre_plaintext_t plaintext) {
   int result = STS_OK;
 
   bn_t r;
@@ -74,7 +74,7 @@ int pre_encrypt(pre_ciphertext_t ciphertext, pre_params_t params,
     gt_exp(ciphertext->C1, params->Z, r);
 
     /* Z^r*m */
-    gt_mul(ciphertext->C1, ciphertext->C1, plaintext);
+    gt_mul(ciphertext->C1, ciphertext->C1, plaintext->msg);
 
     /* Compute C2 part: G^ar = pk ^r*/
     /* g^ar = pk^r */
@@ -92,7 +92,7 @@ int pre_encrypt(pre_ciphertext_t ciphertext, pre_params_t params,
   return result;
 }
 
-int pre_decrypt(gt_t plaintext, pre_params_t params,
+int pre_decrypt(pre_plaintext_t plaintext, pre_params_t params,
 		pre_sk_t sk, pre_ciphertext_t ciphertext) {
   int result = STS_OK;
 
@@ -101,12 +101,12 @@ int pre_decrypt(gt_t plaintext, pre_params_t params,
 
   gt_null(t0);
   g2_null(t1);
-  gt_null(plaintext);
+  gt_null(plaintext->msg);
 
   TRY {
     gt_new(t0);
     g2_new(t1);
-    gt_new(plaintext);
+    gt_new(plaintext->msg);
 
     assert(params);
     assert(sk);
@@ -124,21 +124,21 @@ int pre_decrypt(gt_t plaintext, pre_params_t params,
       g2_mul(t1, params->g2, sk->inverse);
 
       /* e(g^ar, g^-a) = Z^r */
-      pc_map(plaintext, ciphertext->C2_G1, t1);
+      pc_map(plaintext->msg, ciphertext->C2_G1, t1);
       // pbc_pmesg(3, "Z^r: %B\n", t2);
     } else {
       /* C2 = Z^ar
        * Compute: Z^ar^(1/a)*/
       if (bn_is_zero(sk->inverse)) {
-        gt_set_unity(plaintext);
+        gt_set_unity(plaintext->msg);
       } else {
-        gt_exp(plaintext, ciphertext->C2_GT, sk->inverse);
+        gt_exp(plaintext->msg, ciphertext->C2_GT, sk->inverse);
       }
     }
 
     /* C1 / e(C2, g^a^-1) or C1/C2^(1/a) */
-    gt_inv(t0, plaintext);
-    gt_mul(plaintext, ciphertext->C1, t0);
+    gt_inv(t0, plaintext->msg);
+    gt_mul(plaintext->msg, ciphertext->C1, t0);
   }
   CATCH_ANY { result = STS_ERR; }
   FINALLY {

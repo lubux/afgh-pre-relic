@@ -57,30 +57,30 @@ int pre_cleanup() {
   return STS_OK;
 }
 
-int pre_rand_message(gt_t msg) {
+int pre_rand_plaintext(pre_plaintext_t plaintext) {
   int result = STS_OK;
 
   TRY {
-    gt_new(msg);
-    gt_rand(msg);
+    gt_new(plaintext->msg);
+    gt_rand(plaintext->msg);
   }
   CATCH_ANY {
-    gt_free(msg);
+    gt_free(plaintext->msg);
     result = STS_ERR;
   }
 
   return result;
 }
 
-int pre_map_to_key(uint8_t *key, int key_len, gt_t msg) {
+int pre_map_to_key(uint8_t *key, int key_len, pre_plaintext_t plaintext) {
   int result = STS_OK;
 
   size_t buff_size;
 
   TRY {
-    buff_size = (size_t)gt_size_bin(msg, 1);
+    buff_size = (size_t)gt_size_bin(plaintext->msg, 1);
     uint8_t buffer[buff_size];
-    gt_write_bin(buffer, (int)buff_size, msg, 1);
+    gt_write_bin(buffer, (int)buff_size, plaintext->msg, 1);
     md_kdf2(key, key_len, buffer, (int)buff_size);
   }
   CATCH_ANY { result = STS_ERR; };
@@ -136,7 +136,12 @@ int pre_clean_token(pre_token_t token) {
   return STS_OK;
 }
 
-int pre_clean_cipher(pre_ciphertext_t ciphertext) {
+int pre_clean_plaintext(pre_plaintext_t plaintext) {
+  gt_free(plaintext->msg);
+  return STS_OK;
+}
+
+int pre_clean_ciphertext(pre_ciphertext_t ciphertext) {
   int result = STS_OK;
 
   TRY {

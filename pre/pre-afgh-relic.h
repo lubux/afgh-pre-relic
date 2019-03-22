@@ -93,6 +93,24 @@ typedef struct pre_pk_s *pre_rel_pk_ptr;
 typedef struct pre_pk_s pre_pk_t[1];
 
 /**
+ * PRE re-encryption token
+ */
+struct pre_token_s {
+  g2_t token;
+};
+typedef struct pre_token_s *pre_token_ptr;
+typedef struct pre_token_s pre_token_t[1];
+
+/**
+ * PRE plaintext
+ */
+struct pre_plaintext_s {
+  gt_t msg;
+};
+typedef struct pre_plaintext_s *pre_rel_plaintext_ptr;
+typedef struct pre_plaintext_s pre_plaintext_t[1];
+
+/**
  * PRE ciphertext
  *
  * In the AFGH scheme, ciphertexts that have been encrypted with a public key
@@ -108,15 +126,6 @@ struct pre_ciphertext_s {
 };
 typedef struct pre_ciphertext_s *pre_rel_ciphertext_ptr;
 typedef struct pre_ciphertext_s pre_ciphertext_t[1];
-
-/**
- * PRE re-encryption token
- */
-struct pre_token_s {
-  g2_t token;
-};
-typedef struct pre_token_s *pre_token_ptr;
-typedef struct pre_token_s pre_token_t[1];
 
 ////////////////////////////////////////
 //      Initialization Functions      //
@@ -241,30 +250,38 @@ int pre_clean_pk(pre_params_t pk);
 int pre_clean_token(pre_token_t token);
 
 /**
- * Frees all of the fields of a ciphertext
+ * Frees all of the fields of a plaintext message
  *
- * @param cipher the ciphertext to clean
+ * @param plaintext the plaintext to clean
  * @return STS_OK if ok else STS_ERR
  */
-int pre_clean_cipher(pre_ciphertext_t cipher);
+int pre_clean_plaintext(pre_plaintext_t plaintext);
+
+/**
+ * Frees all of the fields of a ciphertext
+ *
+ * @param ciphertext the ciphertext to clean
+ * @return STS_OK if ok else STS_ERR
+ */
+int pre_clean_ciphertext(pre_ciphertext_t ciphertext);
 
 ////////////////////////////////////////
 //      Message Utility Functions     //
 ////////////////////////////////////////
 
 /**
- * Generate a random gt element for encryption
+ * Generate a random plaintext message
  *
  * @return STS_OK if ok else STS_ERR
  */
-int pre_rand_message(gt_t msg);
+int pre_rand_plaintext(pre_plaintext_t plaintext);
 
 /**
- * Maps a gt message to an encryption key using the standardized KDF2 function
+ * Maps a plaintext message to an encryption key using KDF2
  *
  * @return STS_OK if ok else STS_ERR
  */
-int pre_map_to_key(uint8_t *key, int key_len, gt_t msg);
+int pre_map_to_key(uint8_t *key, int key_len, pre_plaintext_t plaintext);
 
 ////////////////////////////////////////
 //  Encryption/Decryption Functions   //
@@ -280,7 +297,7 @@ int pre_map_to_key(uint8_t *key, int key_len, gt_t msg);
  * @return STS_OK if ok else STS_ERR
  */
 int pre_encrypt(pre_ciphertext_t ciphertext, pre_params_t params,
-		pre_pk_t pk, gt_t plaintext);
+		pre_pk_t pk, pre_plaintext_t plaintext);
 
 /**
  * Decrypts a ciphertext with the given secret key
@@ -291,7 +308,7 @@ int pre_encrypt(pre_ciphertext_t ciphertext, pre_params_t params,
  * @param ciphertext the encrypted message
  * @return STS_OK if ok else STS_ERR
  */
-int pre_decrypt(gt_t plaintext, pre_params_t params,
+int pre_decrypt(pre_plaintext_t plaintext, pre_params_t params,
 		pre_sk_t sk, pre_ciphertext_t ciphertext);
 
 /**
@@ -421,59 +438,59 @@ int encode_token(char *buff, int size, pre_token_t token);
 int decode_token(pre_token_t token, char *buff, int size);
 
 /**
- * Computes the required buffer size to encode a message
+ * Computes the required buffer size to encode a plaintext message
  *
- * @param msg the message whose encoding size to compute
+ * @param plaintext the plaintext message whose encoding size to compute
  * @return STS_OK if ok else STS_ERR
  */
-int get_encoded_msg_size(gt_t msg);
+int get_encoded_plaintext_size(pre_plaintext_t plaintext);
 
 /**
- * Encodes a message to a byte buffer
+ * Encodes a plaintext message to a byte buffer
  *
  * @param buff the resulting buffer
  * @param size the size of the buffer
- * @param msg the message to encode
+ * @param plaintext the plaintext message to encode
  * @return STS_OK if ok else STS_ERR
  */
-int encode_msg(char *buff, int size, gt_t msg);
+int encode_plaintext(char *buff, int size, pre_plaintext_t plaintext);
 
 /**
- * Decodes a message from a byte buffer
+ * Decodes a plaintext message from a byte buffer
  *
- * @param msg the resulting message
- * @param buff the buffer containing an encoded message
+ * @param plaintext the resulting plaintext
+ * @param buff the buffer containing an encoded plaintext message
  * @param size the size of the buffer
  * @return STS_OK if ok else STS_ERR
  */
-int decode_msg(gt_t msg, char *buff, int size);
+int decode_plaintext(pre_plaintext_t plaintext, char *buff, int size);
 
 /**
  * Computes the required buffer size to encode a ciphertext
  *
- * @param cipher the ciphertext whose encoding size to compute
+ * @param ciphertext the ciphertext whose encoding size to compute
  * @return STS_OK if ok else STS_ERR
  */
-int get_encoded_cipher_size(pre_ciphertext_t cipher);
+int get_encoded_ciphertext_size(pre_ciphertext_t ciphertext);
 
 /**
  * Encodes a ciphertext to a byte buffer
  *
  * @param buff the resulting buffer
  * @param size the size of the buffer
- * @param cipher the ciphertext to encode
+ * @param ciphertext the ciphertext to encode
  * @return STS_OK if ok else STS_ERR
  */
-int encode_cipher(char *buff, int size, pre_ciphertext_t cipher);
+int encode_ciphertext(char *buff, int size, pre_ciphertext_t ciphertext);
 
 /**
  * Decodes a ciphertext from a byte buffer
  *
- * @param cipher the resulting ciphertext
+ * @param ciphertext the resulting ciphertext
  * @param buff the buffer containing an encoded ciphertext
  * @param size the size of the buffer
  * @return STS_OK if ok else STS_ERR
  */
-int decode_cipher(pre_ciphertext_t cipher, char *buff, int size);
+int decode_ciphertext(pre_ciphertext_t ciphertext, char *buff, int size);
 
 #endif

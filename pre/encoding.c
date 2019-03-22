@@ -325,81 +325,81 @@ int decode_token(pre_token_t token, char *buff, int size) {
   return STS_OK;
 }
 
-int get_encoded_msg_size(gt_t msg) {
-  return gt_size_bin(msg, 1);
+int get_encoded_plaintext_size(pre_plaintext_t plaintext) {
+  return gt_size_bin(plaintext->msg, 1);
 }
 
-int encode_msg(char *buff, int size, gt_t msg) {
-  int next_size = gt_size_bin(msg, 1);
+int encode_plaintext(char *buff, int size, pre_plaintext_t plaintext) {
+  int next_size = gt_size_bin(plaintext->msg, 1);
   if (size < next_size) {
     return STS_ERR;
   }
-  gt_write_bin((uint8_t *)buff, next_size, msg, 1);
+  gt_write_bin((uint8_t *)buff, next_size, plaintext->msg, 1);
   return STS_OK;
 }
 
-int decode_msg(gt_t msg, char *buff, int size) {
-  gt_new(msg);
-  gt_read_bin(msg, (uint8_t *)buff, size);
+int decode_plaintext(pre_plaintext_t plaintext, char *buff, int size) {
+  gt_new(plaintext->msg);
+  gt_read_bin(plaintext->msg, (uint8_t *)buff, size);
   return STS_OK;
 }
 
-int get_encoded_cipher_size(pre_ciphertext_t cipher) {
+int get_encoded_ciphertext_size(pre_ciphertext_t ciphertext) {
   int size = 1;
-  size += gt_size_bin(cipher->C1, 1) + ENCODING_SIZE;
-  if (cipher->group == PRE_REL_CIPHERTEXT_IN_G_GROUP) {
-    size += g1_size_bin(cipher->C2_G1, 1) + ENCODING_SIZE;
+  size += gt_size_bin(ciphertext->C1, 1) + ENCODING_SIZE;
+  if (ciphertext->group == PRE_REL_CIPHERTEXT_IN_G_GROUP) {
+    size += g1_size_bin(ciphertext->C2_G1, 1) + ENCODING_SIZE;
   } else {
-    size += gt_size_bin(cipher->C2_GT, 1) + ENCODING_SIZE;
+    size += gt_size_bin(ciphertext->C2_GT, 1) + ENCODING_SIZE;
   }
   return size;
 }
 
-int encode_cipher(char *buff, int size, pre_ciphertext_t cipher) {
+int encode_ciphertext(char *buff, int size, pre_ciphertext_t ciphertext) {
   int next_size;
   char *curr = buff + 1;
 
-  buff[0] = cipher->group;
+  buff[0] = ciphertext->group;
 
-  next_size = gt_size_bin(cipher->C1, 1);
+  next_size = gt_size_bin(ciphertext->C1, 1);
   if (!valid_bounds(buff, curr, next_size, size)) {
     return STS_ERR;
   }
   write_size(curr, (u_int16_t)next_size);
   curr += ENCODING_SIZE;
-  gt_write_bin((uint8_t *)curr, next_size, cipher->C1, 1);
+  gt_write_bin((uint8_t *)curr, next_size, ciphertext->C1, 1);
   curr += next_size;
 
-  if (cipher->group == PRE_REL_CIPHERTEXT_IN_G_GROUP) {
-    next_size = g1_size_bin(cipher->C2_G1, 1);
+  if (ciphertext->group == PRE_REL_CIPHERTEXT_IN_G_GROUP) {
+    next_size = g1_size_bin(ciphertext->C2_G1, 1);
     if (!valid_bounds(buff, curr, next_size, size)) {
       return STS_ERR;
     }
     write_size(curr, (u_int16_t)next_size);
     curr += ENCODING_SIZE;
-    g1_write_bin((uint8_t *)curr, next_size, cipher->C2_G1, 1);
+    g1_write_bin((uint8_t *)curr, next_size, ciphertext->C2_G1, 1);
   } else {
-    next_size = gt_size_bin(cipher->C2_GT, 1);
+    next_size = gt_size_bin(ciphertext->C2_GT, 1);
     if (!valid_bounds(buff, curr, next_size, size)) {
       return STS_ERR;
     }
     write_size(curr, (u_int16_t)next_size);
     curr += ENCODING_SIZE;
-    gt_write_bin((uint8_t *)curr, next_size, cipher->C2_GT, 1);
+    gt_write_bin((uint8_t *)curr, next_size, ciphertext->C2_GT, 1);
   }
   return STS_OK;
 }
 
-int decode_cipher(pre_ciphertext_t cipher, char *buff, int size) {
+int decode_ciphertext(pre_ciphertext_t ciphertext, char *buff, int size) {
   int next_size, dyn_size = 1;
   char *curr = buff + 1;
   if (size < 4) {
     return STS_ERR;
   }
 
-  gt_new(cipher->C1);
+  gt_new(ciphertext->C1);
 
-  cipher->group = buff[0];
+  ciphertext->group = buff[0];
 
   next_size = read_size(curr);
   if (!valid_bounds(buff, curr, next_size, size)) {
@@ -410,11 +410,11 @@ int decode_cipher(pre_ciphertext_t cipher, char *buff, int size) {
     return STS_ERR;
   }
   curr += ENCODING_SIZE;
-  gt_read_bin(cipher->C1, (uint8_t *)curr, next_size);
+  gt_read_bin(ciphertext->C1, (uint8_t *)curr, next_size);
   curr += next_size;
 
-  if (cipher->group == PRE_REL_CIPHERTEXT_IN_G_GROUP) {
-    g1_new(cipher->C2_G1);
+  if (ciphertext->group == PRE_REL_CIPHERTEXT_IN_G_GROUP) {
+    g1_new(ciphertext->C2_G1);
     next_size = read_size(curr);
     if (!valid_bounds(buff, curr, next_size, size)) {
       return STS_ERR;
@@ -424,9 +424,9 @@ int decode_cipher(pre_ciphertext_t cipher, char *buff, int size) {
       return STS_ERR;
     }
     curr += ENCODING_SIZE;
-    g1_read_bin(cipher->C2_G1, (uint8_t *)curr, next_size);
+    g1_read_bin(ciphertext->C2_G1, (uint8_t *)curr, next_size);
   } else {
-    gt_new(cipher->C2_GT);
+    gt_new(ciphertext->C2_GT);
     next_size = read_size(curr);
     if (!valid_bounds(buff, curr, next_size, size)) {
       return STS_ERR;
@@ -436,7 +436,7 @@ int decode_cipher(pre_ciphertext_t cipher, char *buff, int size) {
       return STS_ERR;
     }
     curr += ENCODING_SIZE;
-    gt_read_bin(cipher->C2_GT, (uint8_t *)curr, next_size);
+    gt_read_bin(ciphertext->C2_GT, (uint8_t *)curr, next_size);
   }
 
   return STS_OK;
