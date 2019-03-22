@@ -52,7 +52,7 @@
 #define PRE_REL_CIPHERTEXT_IN_G_GROUP '1'
 #define PRE_REL_CIPHERTEXT_IN_GT_GROUP '2'
 
-#define ENCODING_SIZE 2;
+#define ENCODING_SIZE 2
 
 /**
  *  PRE public parameters

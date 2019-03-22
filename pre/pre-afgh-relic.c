@@ -539,11 +539,11 @@ int get_encoded_msg_size(gt_t msg) {
 }
 
 int encode_msg(char *buff, int size, gt_t msg) {
-  int size_type = get_encoded_msg_size(msg);
-  if (size < size_type) {
+  int next_size = gt_size_bin(msg, 1);
+  if (size < next_size) {
     return STS_ERR;
   }
-  gt_write_bin((uint8_t *)buff, size_type, msg, 1);
+  gt_write_bin((uint8_t *)buff, next_size, msg, 1);
   return STS_OK;
 }
 
@@ -558,11 +558,11 @@ int get_encoded_token_size(pre_token_t token) {
 }
 
 int encode_token(char *buff, int size, pre_token_t token) {
-  int size_type = get_encoded_token_size(token);
-  if (size < size_type) {
+  int next_size = g2_size_bin(token->token, 1);
+  if (size < next_size) {
     return STS_ERR;
   }
-  g2_write_bin((uint8_t *)buff, size_type, token->token, 1);
+  g2_write_bin((uint8_t *)buff, next_size, token->token, 1);
   return STS_OK;
 }
 
@@ -581,6 +581,11 @@ int read_size(char *buffer) {
   return ((uint8_t)buffer[0] << 8) | ((uint8_t)buffer[1]);
 }
 
+int valid_bounds(char *base, char *curr, int next_size, int size) {
+    int curr_size = (int)(curr-base);
+    return curr_size+next_size+ENCODING_SIZE <= size;
+}
+
 int get_encoded_params_size(pre_params_t params) {
   int total_size = 0;
   total_size += gt_size_bin(params->Z, 1) + ENCODING_SIZE;
@@ -591,41 +596,50 @@ int get_encoded_params_size(pre_params_t params) {
 }
 
 int encode_params(char *buff, int size, pre_params_t params) {
-  int size_type = get_encoded_params_size(params), temp_size;
-  char *cur_ptr = buff;
-  if (size < size_type) {
+  int next_size;
+  char *curr = buff;
+
+  next_size = gt_size_bin(params->Z, 1);
+  if (!valid_bounds(buff, curr, next_size, size)) {
     return STS_ERR;
   }
+  write_size(curr, (u_int16_t)next_size);
+  curr += ENCODING_SIZE;
+  gt_write_bin((uint8_t *)curr, next_size, params->Z, 1);
+  curr += next_size;
 
-  temp_size = gt_size_bin(params->Z, 1);
-  write_size(cur_ptr, (u_int16_t)temp_size);
-  cur_ptr += ENCODING_SIZE;
-  gt_write_bin((uint8_t *)cur_ptr, temp_size, params->Z, 1);
-  cur_ptr += temp_size;
+  next_size = g1_size_bin(params->g1, 1);
+  if (!valid_bounds(buff, curr, next_size, size)) {
+    return STS_ERR;
+  }
+  write_size(curr, (u_int16_t)next_size);
+  curr += ENCODING_SIZE;
+  g1_write_bin((uint8_t *)curr, next_size, params->g1, 1);
+  curr += next_size;
 
-  temp_size = g1_size_bin(params->g1, 1);
-  write_size(cur_ptr, (u_int16_t)temp_size);
-  cur_ptr += ENCODING_SIZE;
-  g1_write_bin((uint8_t *)cur_ptr, temp_size, params->g1, 1);
-  cur_ptr += temp_size;
+  next_size = g2_size_bin(params->g2, 1);
+  if (!valid_bounds(buff, curr, next_size, size)) {
+    return STS_ERR;
+  }
+  write_size(curr, (u_int16_t)next_size);
+  curr += ENCODING_SIZE;
+  g2_write_bin((uint8_t *)curr, next_size, params->g2, 1);
+  curr += next_size;
 
-  temp_size = g2_size_bin(params->g2, 1);
-  write_size(cur_ptr, (u_int16_t)temp_size);
-  cur_ptr += ENCODING_SIZE;
-  g2_write_bin((uint8_t *)cur_ptr, temp_size, params->g2, 1);
-  cur_ptr += temp_size;
-
-  temp_size = bn_size_bin(params->g1_ord);
-  write_size(cur_ptr, temp_size);
-  cur_ptr += ENCODING_SIZE;
-  bn_write_bin((uint8_t *)cur_ptr, temp_size, params->g1_ord);
+  next_size = bn_size_bin(params->g1_ord);
+  if (!valid_bounds(buff, curr, next_size, size)) {
+    return STS_ERR;
+  }
+  write_size(curr, next_size);
+  curr += ENCODING_SIZE;
+  bn_write_bin((uint8_t *)curr, next_size, params->g1_ord);
 
   return STS_OK;
 }
 
 int decode_params(pre_params_t params, char *buff, int size) {
-  int temp_size, dyn_size = 0;
-  char *cur_ptr = buff;
+  int next_size, dyn_size = 0;
+  char *curr = buff;
   if (size < 4) {
     return STS_ERR;
   }
@@ -635,41 +649,53 @@ int decode_params(pre_params_t params, char *buff, int size) {
   gt_new(params->Z);
   bn_new(params->g1_ord);
 
-  temp_size = read_size(cur_ptr);
-  dyn_size += temp_size + ENCODING_SIZE;
+  next_size = read_size(curr);
+  if (!valid_bounds(buff, curr, next_size, size)) {
+    return STS_ERR;
+  }
+  dyn_size += next_size + ENCODING_SIZE;
   if (size < dyn_size) {
     return STS_ERR;
   }
-  cur_ptr += ENCODING_SIZE;
-  gt_read_bin(params->Z, (uint8_t *)cur_ptr, temp_size);
-  cur_ptr += temp_size;
+  curr += ENCODING_SIZE;
+  gt_read_bin(params->Z, (uint8_t *)curr, next_size);
+  curr += next_size;
 
-  temp_size = read_size(cur_ptr);
-  dyn_size += temp_size + ENCODING_SIZE;
+  next_size = read_size(curr);
+  if (!valid_bounds(buff, curr, next_size, size)) {
+    return STS_ERR;
+  }
+  dyn_size += next_size + ENCODING_SIZE;
   if (size < dyn_size) {
     return STS_ERR;
   }
-  cur_ptr += ENCODING_SIZE;
-  g1_read_bin(params->g1, (uint8_t *)cur_ptr, temp_size);
-  cur_ptr += temp_size;
+  curr += ENCODING_SIZE;
+  g1_read_bin(params->g1, (uint8_t *)curr, next_size);
+  curr += next_size;
 
-  temp_size = read_size(cur_ptr);
-  dyn_size += temp_size + ENCODING_SIZE;
+  next_size = read_size(curr);
+  if (!valid_bounds(buff, curr, next_size, size)) {
+    return STS_ERR;
+  }
+  dyn_size += next_size + ENCODING_SIZE;
   if (size < dyn_size) {
     return STS_ERR;
   }
-  cur_ptr += ENCODING_SIZE;
-  g2_read_bin(params->g2, (uint8_t *)cur_ptr, temp_size);
-  cur_ptr += temp_size;
+  curr += ENCODING_SIZE;
+  g2_read_bin(params->g2, (uint8_t *)curr, next_size);
+  curr += next_size;
 
-  temp_size = read_size(cur_ptr);
-  dyn_size += temp_size + ENCODING_SIZE;
+  next_size = read_size(curr);
+  if (!valid_bounds(buff, curr, next_size, size)) {
+    return STS_ERR;
+  }
+  dyn_size += next_size + ENCODING_SIZE;
   if (size < dyn_size) {
     return STS_ERR;
   }
-  cur_ptr += ENCODING_SIZE;
-  bn_read_bin(params->g1_ord, (uint8_t *)cur_ptr, temp_size);
-  cur_ptr += temp_size;
+  curr += ENCODING_SIZE;
+  bn_read_bin(params->g1_ord, (uint8_t *)curr, next_size);
+  curr += next_size;
 
   return STS_OK;
 }
@@ -682,29 +708,32 @@ int get_encoded_sk_size(pre_sk_t sk) {
 }
 
 int encode_sk(char *buff, int size, pre_sk_t sk) {
-  int size_type = get_encoded_sk_size(sk), temp_size;
-  char *cur_ptr = buff;
-  if (size < size_type) {
+  int next_size;
+  char *curr = buff;
+
+  next_size = bn_size_bin(sk->sk);
+  if (!valid_bounds(buff, curr, next_size, size)) {
     return STS_ERR;
   }
+  write_size(curr, next_size);
+  curr += ENCODING_SIZE;
+  bn_write_bin((uint8_t *)curr, next_size, sk->sk);
+  curr += next_size;
 
-  temp_size = bn_size_bin(sk->sk);
-  write_size(cur_ptr, temp_size);
-  cur_ptr += ENCODING_SIZE;
-  bn_write_bin((uint8_t *)cur_ptr, temp_size, sk->sk);
-  cur_ptr += temp_size;
-
-  temp_size = bn_size_bin(sk->inverse);
-  write_size(cur_ptr, temp_size);
-  cur_ptr += ENCODING_SIZE;
-  bn_write_bin((uint8_t *)cur_ptr, temp_size, sk->inverse);
+  next_size = bn_size_bin(sk->inverse);
+  if (!valid_bounds(buff, curr, next_size, size)) {
+    return STS_ERR;
+  }
+  write_size(curr, next_size);
+  curr += ENCODING_SIZE;
+  bn_write_bin((uint8_t *)curr, next_size, sk->inverse);
 
   return STS_OK;
 }
 
 int decode_sk(pre_sk_t sk, char *buff, int size) {
-  int temp_size, dyn_size = 0;
-  char *cur_ptr = buff;
+  int next_size, dyn_size = 0;
+  char *curr = buff;
   if (size < 4) {
     return STS_ERR;
   }
@@ -712,23 +741,29 @@ int decode_sk(pre_sk_t sk, char *buff, int size) {
   bn_new(sk->sk);
   bn_new(sk->inverse);
 
-  temp_size = read_size(cur_ptr);
-  dyn_size += temp_size + ENCODING_SIZE;
+  next_size = read_size(curr);
+  if (!valid_bounds(buff, curr, next_size, size)) {
+    return STS_ERR;
+  }
+  dyn_size += next_size + ENCODING_SIZE;
   if (size < dyn_size) {
     return STS_ERR;
   }
-  cur_ptr += ENCODING_SIZE;
-  bn_read_bin(sk->sk, (uint8_t *)cur_ptr, temp_size);
-  cur_ptr += temp_size;
+  curr += ENCODING_SIZE;
+  bn_read_bin(sk->sk, (uint8_t *)curr, next_size);
+  curr += next_size;
 
-  temp_size = read_size(cur_ptr);
-  dyn_size += temp_size + ENCODING_SIZE;
+  next_size = read_size(curr);
+  if (!valid_bounds(buff, curr, next_size, size)) {
+    return STS_ERR;
+  }
+  dyn_size += next_size + ENCODING_SIZE;
   if (size < dyn_size) {
     return STS_ERR;
   }
-  cur_ptr += ENCODING_SIZE;
-  bn_read_bin(sk->inverse, (uint8_t *)cur_ptr, temp_size);
-  cur_ptr += temp_size;
+  curr += ENCODING_SIZE;
+  bn_read_bin(sk->inverse, (uint8_t *)curr, next_size);
+  curr += next_size;
 
   return STS_OK;
 }
@@ -741,30 +776,33 @@ int get_encoded_pk_size(pre_pk_t pk) {
 }
 
 int encode_pk(char *buff, int size, pre_pk_t pk) {
-  int size_type = get_encoded_pk_size(pk), temp_size;
-  char *cur_ptr = buff;
-  if (size < size_type) {
+  int next_size;
+  char *curr = buff;
+
+  next_size = g1_size_bin(pk->pk1, 1);
+  if (!valid_bounds(buff, curr, next_size, size)) {
     return STS_ERR;
   }
+  write_size(curr, (u_int16_t)next_size);
+  curr += ENCODING_SIZE;
+  g1_write_bin((uint8_t *)curr, next_size, pk->pk1, 1);
+  curr += next_size;
 
-  temp_size = g1_size_bin(pk->pk1, 1);
-  write_size(cur_ptr, (u_int16_t)temp_size);
-  cur_ptr += ENCODING_SIZE;
-  g1_write_bin((uint8_t *)cur_ptr, temp_size, pk->pk1, 1);
-  cur_ptr += temp_size;
-
-  temp_size = g2_size_bin(pk->pk2, 1);
-  write_size(cur_ptr, (u_int16_t)temp_size);
-  cur_ptr += ENCODING_SIZE;
-  g2_write_bin((uint8_t *)cur_ptr, temp_size, pk->pk2, 1);
-  cur_ptr += temp_size;
+  next_size = g2_size_bin(pk->pk2, 1);
+  if (!valid_bounds(buff, curr, next_size, size)) {
+    return STS_ERR;
+  }
+  write_size(curr, (u_int16_t)next_size);
+  curr += ENCODING_SIZE;
+  g2_write_bin((uint8_t *)curr, next_size, pk->pk2, 1);
+  curr += next_size;
 
   return STS_OK;
 }
 
 int decode_pk(pre_pk_t pk, char *buff, int size) {
-  int temp_size, dyn_size = 0;
-  char *cur_ptr = buff;
+  int next_size, dyn_size = 0;
+  char *curr = buff;
   if (size < 4) {
     return STS_ERR;
   }
@@ -772,23 +810,29 @@ int decode_pk(pre_pk_t pk, char *buff, int size) {
   g1_new(pk->pk1);
   g2_new(pk->pk2);
 
-  temp_size = read_size(cur_ptr);
-  dyn_size += temp_size + ENCODING_SIZE;
+  next_size = read_size(curr);
+  if (!valid_bounds(buff, curr, next_size, size)) {
+    return STS_ERR;
+  }
+  dyn_size += next_size + ENCODING_SIZE;
   if (size < dyn_size) {
     return STS_ERR;
   }
-  cur_ptr += ENCODING_SIZE;
-  g1_read_bin(pk->pk1, (uint8_t *)cur_ptr, temp_size);
-  cur_ptr += temp_size;
+  curr += ENCODING_SIZE;
+  g1_read_bin(pk->pk1, (uint8_t *)curr, next_size);
+  curr += next_size;
 
-  temp_size = read_size(cur_ptr);
-  dyn_size += temp_size + ENCODING_SIZE;
+  next_size = read_size(curr);
+  if (!valid_bounds(buff, curr, next_size, size)) {
+    return STS_ERR;
+  }
+  dyn_size += next_size + ENCODING_SIZE;
   if (size < dyn_size) {
     return STS_ERR;
   }
-  cur_ptr += ENCODING_SIZE;
-  g2_read_bin(pk->pk2, (uint8_t *)cur_ptr, temp_size);
-  cur_ptr += temp_size;
+  curr += ENCODING_SIZE;
+  g2_read_bin(pk->pk2, (uint8_t *)curr, next_size);
+  curr += next_size;
 
   return STS_OK;
 }
@@ -805,36 +849,43 @@ int get_encoded_cipher_size(pre_ciphertext_t cipher) {
 }
 
 int encode_cipher(char *buff, int size, pre_ciphertext_t cipher) {
-  int size_type = get_encoded_cipher_size(cipher), temp_size;
-  char *cur_ptr = buff + 1;
-  if (size < size_type) {
-    return STS_ERR;
-  }
+  int next_size;
+  char *curr = buff + 1;
+
   buff[0] = cipher->group;
 
-  temp_size = gt_size_bin(cipher->C1, 1);
-  write_size(cur_ptr, (u_int16_t)temp_size);
-  cur_ptr += ENCODING_SIZE;
-  gt_write_bin((uint8_t *)cur_ptr, temp_size, cipher->C1, 1);
-  cur_ptr += temp_size;
+  next_size = gt_size_bin(cipher->C1, 1);
+  if (!valid_bounds(buff, curr, next_size, size)) {
+    return STS_ERR;
+  }
+  write_size(curr, (u_int16_t)next_size);
+  curr += ENCODING_SIZE;
+  gt_write_bin((uint8_t *)curr, next_size, cipher->C1, 1);
+  curr += next_size;
 
   if (cipher->group == PRE_REL_CIPHERTEXT_IN_G_GROUP) {
-    temp_size = g1_size_bin(cipher->C2_G1, 1);
-    write_size(cur_ptr, (u_int16_t)temp_size);
-    cur_ptr += ENCODING_SIZE;
-    g1_write_bin((uint8_t *)cur_ptr, temp_size, cipher->C2_G1, 1);
+    next_size = g1_size_bin(cipher->C2_G1, 1);
+    if (!valid_bounds(buff, curr, next_size, size)) {
+      return STS_ERR;
+    }
+    write_size(curr, (u_int16_t)next_size);
+    curr += ENCODING_SIZE;
+    g1_write_bin((uint8_t *)curr, next_size, cipher->C2_G1, 1);
   } else {
-    temp_size = gt_size_bin(cipher->C2_GT, 1);
-    write_size(cur_ptr, (u_int16_t)temp_size);
-    cur_ptr += ENCODING_SIZE;
-    gt_write_bin((uint8_t *)cur_ptr, temp_size, cipher->C2_GT, 1);
+    next_size = gt_size_bin(cipher->C2_GT, 1);
+    if (!valid_bounds(buff, curr, next_size, size)) {
+      return STS_ERR;
+    }
+    write_size(curr, (u_int16_t)next_size);
+    curr += ENCODING_SIZE;
+    gt_write_bin((uint8_t *)curr, next_size, cipher->C2_GT, 1);
   }
   return STS_OK;
 }
 
 int decode_cipher(pre_ciphertext_t cipher, char *buff, int size) {
-  int temp_size, dyn_size = 1;
-  char *cur_ptr = buff + 1;
+  int next_size, dyn_size = 1;
+  char *curr = buff + 1;
   if (size < 4) {
     return STS_ERR;
   }
@@ -843,33 +894,42 @@ int decode_cipher(pre_ciphertext_t cipher, char *buff, int size) {
 
   cipher->group = buff[0];
 
-  temp_size = read_size(cur_ptr);
-  dyn_size += temp_size + ENCODING_SIZE;
+  next_size = read_size(curr);
+  if (!valid_bounds(buff, curr, next_size, size)) {
+    return STS_ERR;
+  }
+  dyn_size += next_size + ENCODING_SIZE;
   if (size < dyn_size) {
     return STS_ERR;
   }
-  cur_ptr += ENCODING_SIZE;
-  gt_read_bin(cipher->C1, (uint8_t *)cur_ptr, temp_size);
-  cur_ptr += temp_size;
+  curr += ENCODING_SIZE;
+  gt_read_bin(cipher->C1, (uint8_t *)curr, next_size);
+  curr += next_size;
 
   if (cipher->group == PRE_REL_CIPHERTEXT_IN_G_GROUP) {
     g1_new(cipher->C2_G1);
-    temp_size = read_size(cur_ptr);
-    dyn_size += temp_size + ENCODING_SIZE;
+    next_size = read_size(curr);
+    if (!valid_bounds(buff, curr, next_size, size)) {
+      return STS_ERR;
+    }
+    dyn_size += next_size + ENCODING_SIZE;
     if (size < dyn_size) {
       return STS_ERR;
     }
-    cur_ptr += ENCODING_SIZE;
-    g1_read_bin(cipher->C2_G1, (uint8_t *)cur_ptr, temp_size);
+    curr += ENCODING_SIZE;
+    g1_read_bin(cipher->C2_G1, (uint8_t *)curr, next_size);
   } else {
     gt_new(cipher->C2_GT);
-    temp_size = read_size(cur_ptr);
-    dyn_size += temp_size + ENCODING_SIZE;
+    next_size = read_size(curr);
+    if (!valid_bounds(buff, curr, next_size, size)) {
+      return STS_ERR;
+    }
+    dyn_size += next_size + ENCODING_SIZE;
     if (size < dyn_size) {
       return STS_ERR;
     }
-    cur_ptr += ENCODING_SIZE;
-    gt_read_bin(cipher->C2_GT, (uint8_t *)cur_ptr, temp_size);
+    curr += ENCODING_SIZE;
+    gt_read_bin(cipher->C2_GT, (uint8_t *)curr, next_size);
   }
 
   return STS_OK;
