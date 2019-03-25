@@ -1,0 +1,8 @@
+language: C
+
+before_script:
+  - bash scripts/install-relic-ubuntu.sh
+  - make && sudo make install
+  - make python && sudo make install-python
+
+script: make test && make test python
