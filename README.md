@@ -42,52 +42,92 @@ Benchmark results on on a MacBook Pro 2017 2.8 GHz Intel Core i7
 
 ```
 -- Curve B12-P381:
-Performing 1000 runs
+Performing 100 runs
 
-Key Generation
-        avg: 2140us
-        min: 1925us
-        max: 3295us
+Public Parameter Generation
+	avg: 2120us
+	min: 2104us
+	max: 2203us
 
-Key Encoding
-        avg: 17us
-        min: 14us
-        max: 60us
+Public Parameter Encoding
+	avg: 3us
+	min: 3us
+	max: 6us
 
-Key Decoding
-        avg: 323us
-        min: 272us
-        max: 688us
+Public Parameter Decoding
+	avg: 7us
+	min: 7us
+	max: 17us
+
+Secret Key Generation
+	avg: 53us
+	min: 45us
+	max: 70us
+
+Secret Key Encoding
+	avg: 0us
+	min: 0us
+	max: 0us
+
+Secret Key Decoding
+	avg: 0us
+	min: 0us
+	max: 0us
+
+Public Key Generation
+	avg: 537us
+	min: 513us
+	max: 578us
+
+Public Key Encoding
+	avg: 1us
+	min: 1us
+	max: 1us
+
+Public Key Decoding
+	avg: 2us
+	min: 2us
+	max: 4us
+
+Keypair Derivation
+	avg: 594us
+	min: 564us
+	max: 628us
 
 Encryption
-        avg: 1074us
-        min: 885us
-        max: 1989us
-
-Token Generation
-        avg: 548us
-        min: 441us
-        max: 1034us
-
-Token Encoding
-        avg: 0us
-        min: 0us
-        max: 27us
-
-Token Decoding
-        avg: 124us
-        min: 90us
-        max: 335us
-
-Re-Encryption
-        avg: 1703us
-        min: 1542us
-        max: 3052us
+	avg: 1368us
+	min: 1265us
+	max: 1524us
 
 Decryption
-        avg: 892us
-        min: 688us
-        max: 1738us
+	avg: 2785us
+	min: 2699us
+	max: 2887us
+
+Token Generation
+	avg: 648us
+	min: 570us
+	max: 717us
+
+Token Encoding
+	avg: 1us
+	min: 1us
+	max: 1us
+
+Token Decoding
+	avg: 2us
+	min: 2us
+	max: 3us
+
+Re-Encryption
+	avg: 2120us
+	min: 2104us
+	max: 2210us
+
+Decryption (re-encrypted)
+	avg: 1096us
+	min: 978us
+	max: 1209us
 
 ```
 
