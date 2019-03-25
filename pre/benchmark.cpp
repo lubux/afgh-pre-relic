@@ -62,19 +62,20 @@ int print_stats(const char *desc, const char *unit, int n, uint64_t *times) {
 }
 
 int run_benchmark(int runs) {
-  gt_t msg, res;
   pre_params_t params;
-  pre_sk_t alice_sk, bob_sk;
-  pre_pk_t alice_pk, bob_pk;
-  pre_ciphertext_t alice_ciphers[runs], bob_ciphers[runs];
+  pre_sk_t alice_sk, alice_sk_new, bob_sk;
+  pre_pk_t alice_pk, alice_pk_new, bob_pk;
+  pre_plaintext_t plaintext, decrypted;
+  pre_ciphertext_t alice_cipher;
+  pre_re_ciphertext_t bob_re_cipher;
   pre_token_t token_to_bob;
   int encoded_params_size, encoded_sk_size, encoded_pk_size, encoded_token_size;
   high_resolution_clock::time_point t1, t2;
   uint64_t params_gen[runs], params_encode[runs], params_decode[runs],
            sk_gen[runs], sk_encode[runs], sk_decode[runs], pk_gen[runs],
-           pk_encode[runs], pk_decode[runs], key_derive[runs], key_encode[runs],
-           encrypt[runs], key_decode[runs], token_gen[runs], token_encode[runs],
-           token_decode[runs], re_encrypt[runs], decrypt[runs];
+           pk_encode[runs], pk_decode[runs], keypair_derive[runs], key_encode[runs],
+           encrypt[runs], decrypt[runs], key_decode[runs], token_gen[runs],
+           token_encode[runs], token_decode[runs], re_encrypt[runs], decrypt_re[runs];
 
   std::cout << "Performing " << runs << " runs" << std::endl;
   std::cout << std::endl;
@@ -102,7 +103,7 @@ int run_benchmark(int runs) {
     params_decode[i] = (uint64_t)us;
 
     t1 = high_resolution_clock::now();
-    pre_generate_sk(params, alice_sk);
+    pre_generate_sk(alice_sk, params);
     t2 = high_resolution_clock::now();
     us = duration_cast<microseconds>(t2 - t1).count();
     sk_gen[i] = (uint64_t)us;
@@ -138,27 +139,31 @@ int run_benchmark(int runs) {
     pk_decode[i] = (uint64_t)us;
 
     t1 = high_resolution_clock::now();
-    pre_generate_pk(params, alice_sk, alice_pk);
+    pre_derive_pk(alice_pk, params, alice_sk);
     t2 = high_resolution_clock::now();
     us = duration_cast<microseconds>(t2 - t1).count();
     pk_gen[i] = (uint64_t)us;
 
     t1 = high_resolution_clock::now();
-    pre_derive_next_keypair(alice_sk, alice_pk);
+    pre_derive_next_keypair(alice_sk_new, alice_pk_new, params, alice_sk, alice_pk);
     t2 = high_resolution_clock::now();
     us = duration_cast<microseconds>(t2 - t1).count();
-    key_derive[i] = (uint64_t)us;
+    keypair_derive[i] = (uint64_t)us;
 
-    pre_generate_sk(params, bob_sk);
-    pre_generate_pk(params, bob_sk, bob_pk);
+    pre_generate_sk(bob_sk, params);
+    pre_derive_pk(bob_pk, params, bob_sk);
 
-    gt_new(msg);
-    gt_rand(msg);
+    pre_rand_plaintext(plaintext);
 
     t1 = high_resolution_clock::now();
-    pre_encrypt(alice_ciphers[i], params, alice_pk, msg);
+    pre_encrypt(alice_cipher, params, alice_pk, plaintext);
     t2 = high_resolution_clock::now();
     encrypt[i] = (uint64_t)duration_cast<microseconds>(t2 - t1).count();
+
+    t1 = high_resolution_clock::now();
+    pre_decrypt(decrypted, params, alice_sk, alice_cipher);
+    t2 = high_resolution_clock::now();
+    decrypt[i] = (uint64_t)duration_cast<microseconds>(t2 - t1).count();
 
     t1 = high_resolution_clock::now();
     pre_generate_token(token_to_bob, params, alice_sk, bob_pk);
@@ -182,14 +187,14 @@ int run_benchmark(int runs) {
     token_decode[i] = (uint64_t)us;
 
     t1 = high_resolution_clock::now();
-    pre_apply_token(token_to_bob, bob_ciphers[i], alice_ciphers[i]);
+    pre_apply_token(bob_re_cipher, token_to_bob, alice_cipher);
     t2 = high_resolution_clock::now();
     re_encrypt[i] = (uint64_t)duration_cast<microseconds>(t2 - t1).count();
 
     t1 = high_resolution_clock::now();
-    pre_decrypt(res, params, bob_sk, bob_ciphers[i]);
+    pre_decrypt_re(decrypted, params, bob_sk, bob_re_cipher);
     t2 = high_resolution_clock::now();
-    decrypt[i] = (uint64_t)duration_cast<microseconds>(t2 - t1).count();
+    decrypt_re[i] = (uint64_t)duration_cast<microseconds>(t2 - t1).count();
   }
   print_stats("Public Parameter Generation", "us", runs, params_gen);
   print_stats("Public Parameter Encoding", "us", runs, params_encode);
@@ -200,13 +205,14 @@ int run_benchmark(int runs) {
   print_stats("Public Key Generation", "us", runs, pk_gen);
   print_stats("Public Key Encoding", "us", runs, pk_encode);
   print_stats("Public Key Decoding", "us", runs, pk_decode);
-  print_stats("Key Derivation", "us", runs, key_derive);
+  print_stats("Keypair Derivation", "us", runs, keypair_derive);
   print_stats("Encryption", "us", runs, encrypt);
+  print_stats("Decryption", "us", runs, decrypt);
   print_stats("Token Generation", "us", runs, token_gen);
   print_stats("Token Encoding", "us", runs, token_encode);
   print_stats("Token Decoding", "us", runs, token_decode);
   print_stats("Re-Encryption", "us", runs, re_encrypt);
-  print_stats("Decryption", "us", runs, decrypt);
+  print_stats("Decryption (re-encrypted)", "us", runs, decrypt_re);
 }
 
 int main(int argc, char *argv[]) {
@@ -218,7 +224,7 @@ int main(int argc, char *argv[]) {
   }
 
   run_benchmark(runs);
-  pre_deinit();
+  pre_cleanup();
 
   return 0;
 }

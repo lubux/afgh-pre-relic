@@ -17,5 +17,5 @@ add_library(pre-afgh-relic SHARED ${SOURCE_FILES})
 add_executable(test_pre test.cpp ${SOURCE_FILES})
 add_executable(benchmark_pre benchmark.cpp ${SOURCE_FILES})
 
-target_link_libraries(relic_pre ${RELIC_LOC})
-target_link_libraries(relic_pre_re_enc_benchmark ${RELIC_LOC})
+target_link_libraries(test_pre ${RELIC_LOC})
+target_link_libraries(benchmark_pre ${RELIC_LOC})

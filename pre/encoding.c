@@ -173,8 +173,8 @@ int decode_params(pre_params_t params, char *buff, int size) {
 
 int get_encoded_sk_size(pre_sk_t sk) {
   int total_size = 0;
-  total_size += bn_size_bin(sk->sk) + ENCODING_SIZE;
-  total_size += bn_size_bin(sk->inverse) + ENCODING_SIZE;
+  total_size += bn_size_bin(sk->a) + ENCODING_SIZE;
+  total_size += bn_size_bin(sk->a_inv) + ENCODING_SIZE;
   return total_size;
 }
 
@@ -182,22 +182,22 @@ int encode_sk(char *buff, int size, pre_sk_t sk) {
   int next_size;
   char *curr = buff;
 
-  next_size = bn_size_bin(sk->sk);
+  next_size = bn_size_bin(sk->a);
   if (!valid_bounds(buff, curr, next_size, size)) {
     return STS_ERR;
   }
   write_size(curr, next_size);
   curr += ENCODING_SIZE;
-  bn_write_bin((uint8_t *)curr, next_size, sk->sk);
+  bn_write_bin((uint8_t *)curr, next_size, sk->a);
   curr += next_size;
 
-  next_size = bn_size_bin(sk->inverse);
+  next_size = bn_size_bin(sk->a_inv);
   if (!valid_bounds(buff, curr, next_size, size)) {
     return STS_ERR;
   }
   write_size(curr, next_size);
   curr += ENCODING_SIZE;
-  bn_write_bin((uint8_t *)curr, next_size, sk->inverse);
+  bn_write_bin((uint8_t *)curr, next_size, sk->a_inv);
 
   return STS_OK;
 }
@@ -209,8 +209,8 @@ int decode_sk(pre_sk_t sk, char *buff, int size) {
     return STS_ERR;
   }
 
-  bn_new(sk->sk);
-  bn_new(sk->inverse);
+  bn_new(sk->a);
+  bn_new(sk->a_inv);
 
   next_size = read_size(curr);
   if (!valid_bounds(buff, curr, next_size, size)) {
@@ -221,7 +221,7 @@ int decode_sk(pre_sk_t sk, char *buff, int size) {
     return STS_ERR;
   }
   curr += ENCODING_SIZE;
-  bn_read_bin(sk->sk, (uint8_t *)curr, next_size);
+  bn_read_bin(sk->a, (uint8_t *)curr, next_size);
   curr += next_size;
 
   next_size = read_size(curr);
@@ -233,7 +233,7 @@ int decode_sk(pre_sk_t sk, char *buff, int size) {
     return STS_ERR;
   }
   curr += ENCODING_SIZE;
-  bn_read_bin(sk->inverse, (uint8_t *)curr, next_size);
+  bn_read_bin(sk->a_inv, (uint8_t *)curr, next_size);
   curr += next_size;
 
   return STS_OK;
@@ -420,7 +420,7 @@ int get_encoded_re_ciphertext_size(pre_re_ciphertext_t ciphertext) {
   return size;
 }
 
-int encode_ciphertext(char *buff, int size, pre_re_ciphertext_t ciphertext) {
+int encode_re_ciphertext(char *buff, int size, pre_re_ciphertext_t ciphertext) {
   int next_size;
   char *curr = buff;
 
@@ -443,7 +443,7 @@ int encode_ciphertext(char *buff, int size, pre_re_ciphertext_t ciphertext) {
   return STS_OK;
 }
 
-int decode_ciphertext(pre_re_ciphertext_t ciphertext, char *buff, int size) {
+int decode_re_ciphertext(pre_re_ciphertext_t ciphertext, char *buff, int size) {
   int next_size, dyn_size = 0;
   char *curr = buff;
   if (size < 4) {

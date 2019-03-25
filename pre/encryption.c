@@ -48,14 +48,12 @@ int pre_encrypt(pre_ciphertext_t ciphertext, pre_params_t params,
   TRY {
     bn_new(r);
 
-    gt_new(ciphertext->C1);
-    g1_new(ciphertext->C2_G1);
+    gt_new(ciphertext->c1);
+    g1_new(ciphertext->c2);
 
     assert(ciphertext);
     assert(params);
     assert(pk);
-
-    ciphertext->group = PRE_REL_CIPHERTEXT_IN_G_GROUP;
 
     /*
      * First Level Encryption
@@ -63,7 +61,7 @@ int pre_encrypt(pre_ciphertext_t ciphertext, pre_params_t params,
      *      c1 = Z^ar = e(g,g)^ar = e(g^a,g^r) = e(pk_a, g^r)
      *      c2 = m·Z^r
      */
-    /* Compute C1 part: MZ^r*/
+    /* Compute c1 part: MZ^r*/
     /* random r in Zn  (re-use r) */
     bn_rand_mod(r, params->g1_ord);
     while (bn_is_zero(r)) {
@@ -71,19 +69,19 @@ int pre_encrypt(pre_ciphertext_t ciphertext, pre_params_t params,
     }
 
     /* Z^r */
-    gt_exp(ciphertext->C1, params->Z, r);
+    gt_exp(ciphertext->c1, params->Z, r);
 
     /* Z^r*m */
-    gt_mul(ciphertext->C1, ciphertext->C1, plaintext->msg);
+    gt_mul(ciphertext->c1, ciphertext->c1, plaintext->msg);
 
-    /* Compute C2 part: G^ar = pk ^r*/
+    /* Compute c2 part: G^ar = pk ^r*/
     /* g^ar = pk^r */
-    g1_mul(ciphertext->C2_G1, pk->pk1, r);
+    g1_mul(ciphertext->c2, pk->pk1, r);
   }
   CATCH_ANY {
     result = STS_ERR;
-    gt_null(ciphertext->C1);
-    g1_null(ciphertext->C2_G1);
+    gt_null(ciphertext->c1);
+    g1_null(ciphertext->c2);
   }
   FINALLY {
     bn_free(r);
@@ -114,19 +112,19 @@ int pre_decrypt(pre_plaintext_t plaintext, pre_params_t params,
 
     /*
      * M = (M.Z^r) / e(G^ar, G^1/a)
-     * M = C1 / e(C2, G^1/a)
+     * M = c1 / e(c2, G^1/a)
      */
 
     /* g ^ 1/a*/
-    g2_mul(t1, params->g2, sk->inverse);
+    g2_mul(t1, params->g2, sk->a_inv);
 
     /* e(g^ar, g^-a) = Z^r */
-    pc_map(plaintext->msg, ciphertext->C2_G1, t1);
+    pc_map(plaintext->msg, ciphertext->c2, t1);
     // pbc_pmesg(3, "Z^r: %B\n", t2);
 
-    /* C1 / e(C2, g^a^-1) or C1/C2^(1/a) */
+    /* c1 / e(c2, g^a^-1) or c1/c2^(1/a) */
     gt_inv(t0, plaintext->msg);
-    gt_mul(plaintext->msg, ciphertext->C1, t0);
+    gt_mul(plaintext->msg, ciphertext->c1, t0);
   }
   CATCH_ANY { result = STS_ERR; }
   FINALLY {
@@ -141,16 +139,13 @@ int pre_decrypt_re(pre_plaintext_t plaintext, pre_params_t params,
 		pre_sk_t sk, pre_re_ciphertext_t ciphertext) {
   int result = STS_OK;
 
-  g2_t t1;
   gt_t t0;
 
   gt_null(t0);
-  g2_null(t1);
   gt_null(plaintext->msg);
 
   TRY {
     gt_new(t0);
-    g2_new(t1);
     gt_new(plaintext->msg);
 
     assert(params);
@@ -159,25 +154,24 @@ int pre_decrypt_re(pre_plaintext_t plaintext, pre_params_t params,
 
     /*
      * M = (M.Z^r) / e(G^ar, G^1/a)
-     * M = C1 / e(C2, G^1/a)
+     * M = c1 / e(c2, G^1/a)
      */
 
-    /* C2 = Z^ar
+    /* c2 = Z^ar
      * Compute: Z^ar^(1/a)*/
-    if (bn_is_zero(sk->inverse)) {
+    if (bn_is_zero(sk->a_inv)) {
       gt_set_unity(plaintext->msg);
     } else {
-      gt_exp(plaintext->msg, ciphertext->C2_GT, sk->inverse);
+      gt_exp(plaintext->msg, ciphertext->c2, sk->a_inv);
     }
 
-    /* C1 / e(C2, g^a^-1) or C1/C2^(1/a) */
+    /* c1 / e(c2, g^a^-1) or c1/c2^(1/a) */
     gt_inv(t0, plaintext->msg);
-    gt_mul(plaintext->msg, ciphertext->C1, t0);
+    gt_mul(plaintext->msg, ciphertext->c1, t0);
   }
   CATCH_ANY { result = STS_ERR; }
   FINALLY {
     gt_free(t0);
-    g1_free(t1);
   }
 
   return result;
@@ -191,22 +185,21 @@ int pre_apply_token(pre_re_ciphertext_t re_ciphertext, pre_token_t token,
     assert(token);
     assert(re_ciphertext);
     assert(ciphertext);
-    assert(ciphertext->group == PRE_REL_CIPHERTEXT_IN_G_GROUP);
-    pre_clean_re_cipher(re_ciphertext);
+    pre_clean_re_ciphertext(re_ciphertext);
 
-    gt_new(re_ciphertext->C1);
-    gt_new(re_ciphertext->C2_GT);
+    gt_new(re_ciphertext->c1);
+    gt_new(re_ciphertext->c2);
 
-    gt_copy(re_ciphertext->C1, ciphertext->C1);
+    gt_copy(re_ciphertext->c1, ciphertext->c1);
 
-    /* level2: C2 = g^ar */
-    /* level1: C2 = e(g^ar, g^(b/a) = Z^br*/
-    pc_map(re_ciphertext->C2_GT, ciphertext->C2_G1, token->token);
+    /* level2: c2 = g^ar */
+    /* level1: c2 = e(g^ar, g^(b/a) = Z^br*/
+    pc_map(re_ciphertext->c2, ciphertext->c2, token->token);
   }
   CATCH_ANY {
     result = STS_ERR;
-    gt_null(re_ciphertext->C1);
-    gt_null(re_ciphertext->C2_GT);
+    gt_null(re_ciphertext->c1);
+    gt_null(re_ciphertext->c2);
   }
 
   return result;

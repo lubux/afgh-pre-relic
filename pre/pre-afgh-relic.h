@@ -229,7 +229,7 @@ int pre_clean_params(pre_params_t params);
  * @param sk the secret key to clean
  * @return STS_OK if ok else STS_ERR
  */
-int pre_clean_sk(pre_params_t sk);
+int pre_clean_sk(pre_sk_t sk);
 
 /**
  * Frees all of the fields of a public key
@@ -237,7 +237,7 @@ int pre_clean_sk(pre_params_t sk);
  * @param pk the public key to clean
  * @return STS_OK if ok else STS_ERR
  */
-int pre_clean_pk(pre_params_t pk);
+int pre_clean_pk(pre_pk_t pk);
 
 /**
  * Frees all of the fields of a re-encryption token
@@ -269,7 +269,7 @@ int pre_clean_ciphertext(pre_ciphertext_t ciphertext);
  * @param ciphertext the re-encrypted ciphertext to clean
  * @return STS_OK if ok else STS_ERR
  */
-int pre_clean_ciphertext(pre_re_ciphertext_t ciphertext);
+int pre_clean_re_ciphertext(pre_re_ciphertext_t ciphertext);
 
 ////////////////////////////////////////
 //      Message Utility Functions     //
