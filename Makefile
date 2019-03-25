@@ -1,14 +1,17 @@
-.PHONY: all test test-c test-python python install clean
+.PHONY: all test test-c test-python benchmark python install clean
 
 all: python
 
 test: test-c test-python
 
-test-c: lib/libpre-afgh-relic.so
+test-c:
 	./bin/test_pre
 
-test-python: python
+test-python:
 	cd python-wrapper && python3 test.py
+
+benchmark:
+	./bin/benchmark_pre
 
 python: install
 	make -C python-wrapper
@@ -24,5 +27,5 @@ lib/libpre-afgh-relic.so: pre/CMakeLists.txt $(ls pre/*.{c,h,cpp})
 clean:
 	rm -f lib/* bin/*
 	make -C python-wrapper clean
-	-make -C pre clean
+	make -C pre clean
 	rm -rf pre/Makefile pre/CMakeCache.txt pre/CMakeFiles pre/cmake_install.cmake
