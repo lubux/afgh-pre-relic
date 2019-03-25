@@ -16,28 +16,29 @@ void dump_hex(const char* label, char* bytes, int n) {
 }
 
 void* error(const char* context, const char* failure) {
-    char err_msg[14+strlen(context)+strlen(failure)];
-    sprintf(err_msg, "%s :: failed to %s", context, failure);
-    PyErr_SetString(PyExc_RuntimeError, err_msg);
+    char err_plaintext[14+strlen(context)+strlen(failure)];
+    sprintf(err_plaintext, "%s :: failed to %s", context, failure);
+    PyErr_SetString(PyExc_RuntimeError, err_plaintext);
     return NULL;
 }
 
-static PyObject* py_msg_to_ints(PyObject* self, PyObject* args)
+static PyObject* py_plaintext_to_ints(PyObject* self, PyObject* args)
 {
-    const char* err_context = "py_msg_to_ints";
-    Py_buffer msg_buf;
-    gt_t msg;
+    const char* err_context = "py_plaintext_to_ints";
+    Py_buffer plaintext_buf;
+    pre_plaintext_t plaintext;
     uint8_t ret[16];
 
-    if (!PyArg_ParseTuple(args, "y*", &msg_buf)) {
+    if (!PyArg_ParseTuple(args, "y*", &plaintext_buf)) {
         return error(err_context, "parse args");
     }
 
-    if (decode_msg(msg, msg_buf.buf, (int)msg_buf.len) != STS_OK) {
-        return error(err_context, "decode message");
+    if (decode_plaintext(plaintext, plaintext_buf.buf, (int)plaintext_buf.len) != STS_OK) {
+        return error(err_context, "decode plaintext");
     }
-    if (pre_map_to_key(ret, 16, msg) != STS_OK) {
-        return error(err_context, "map message to integers");
+
+    if (pre_map_to_key(ret, 16, plaintext) != STS_OK) {
+        return error(err_context, "map plaintext to integers");
     }
 
     PyObject *l = PyList_New(16);
@@ -55,182 +56,299 @@ static PyObject* py_msg_to_ints(PyObject* self, PyObject* args)
     return l;
 }
 
-static PyObject* py_generate_msg(PyObject* self)
+static PyObject* py_rand_plaintext(PyObject* self)
 {
-    const char* err_context = "py_generate_msg";
-    gt_t msg;
-    int encoded_msg_size;
+    const char* err_context = "py_rand_plaintext";
+    pre_plaintext_t plaintext;
+    int size;
 
-    if (pre_rand_message(msg) != STS_OK) {
-        return error(err_context, "generate random message");
+    if (pre_rand_plaintext(plaintext) != STS_OK) {
+        return error(err_context, "generate random plaintext");
     }
 
-    encoded_msg_size = get_encoded_msg_size(msg);
-    char msg_bytes[encoded_msg_size];
-    if (encode_msg(msg_bytes, encoded_msg_size, msg) != STS_OK) {
-        return error(err_context, "encode message");
+    size = get_encoded_plaintext_size(plaintext);
+    char plaintext_bytes[size];
+    if (encode_plaintext(plaintext_bytes, size, plaintext) != STS_OK) {
+        return error(err_context, "encode plaintext");
     }
 
-    return Py_BuildValue("y#", msg_bytes, encoded_msg_size);
-}
-
-static PyObject* py_generate_token(PyObject* self, PyObject* args)
-{
-    const char* err_context = "py_generate_token";
-    Py_buffer from_key_buf, to_key_buf;
-    pre_keys_t from_key, to_key;
-    pre_re_token_t token;
-    int encoded_token_size;
-
-    if (!PyArg_ParseTuple(args, "y*y*", &from_key_buf, &to_key_buf)) {
-        return error(err_context, "parse_arguments");
-    }
-
-    if (decode_key(from_key, from_key_buf.buf, (int)from_key_buf.len) != STS_OK) {
-        return error(err_context, "decode 'from' key");
-    }
-    if (decode_key(to_key, to_key_buf.buf, (int)to_key_buf.len) != STS_OK) {
-        return error(err_context, "decode 'to' key");
-    }
-    if (pre_generate_re_token(token, from_key, to_key->pk_2) != STS_OK) {
-        return error(err_context, "generate re-encryption token");
-    }
-
-    encoded_token_size = get_encoded_token_size(token);
-    char token_bytes[encoded_token_size];
-    if (encode_token(token_bytes, encoded_token_size, token) != STS_OK) {
-        return error(err_context, "encode token");
-    }
-
-    return Py_BuildValue("y#", token_bytes, encoded_token_size);
+    return Py_BuildValue("y#", plaintext_bytes, size);
 }
 
 static PyObject* py_apply_token(PyObject* self, PyObject* args)
 {
     const char* err_context = "py_apply_token";
-    Py_buffer token_buf, in_cipher_buf;
-    pre_re_token_t token;
-    pre_ciphertext_t in_cipher, out_cipher;
-    int encoded_cipher_size;
+    Py_buffer token_buf, ciphertext_buf;
+    pre_token_t token;
+    pre_ciphertext_t ciphertext;
+    pre_re_ciphertext_t re_ciphertext;
+    int size;
 
-    if (!PyArg_ParseTuple(args, "y*y*", &token_buf, &in_cipher_buf)) {
+    if (!PyArg_ParseTuple(args, "y*y*", &token_buf, &ciphertext_buf)) {
         return error(err_context, "parse arguments");
     }
 
-    if (decode_token(token, token_buf.buf, (int)token_buf.len) != STS_OK) {
+    if(decode_token(token, token_buf.buf, (int)token_buf.len) != STS_OK) {
         return error(err_context, "decode token");
     }
-    if (decode_cipher(in_cipher, in_cipher_buf.buf, (int)in_cipher_buf.len) != STS_OK) {
+    if(decode_ciphertext(ciphertext, ciphertext_buf.buf, (int)ciphertext_buf.len) != STS_OK) {
         return error(err_context, "decode ciphertext");
     }
 
-    if (pre_re_apply(token, out_cipher, in_cipher) != STS_OK) {
+    if (pre_apply_token(re_ciphertext, token, ciphertext) != STS_OK) {
         return error(err_context, "apply re-encryption token");
     }
 
-    encoded_cipher_size = get_encoded_cipher_size(out_cipher);
-    char out_cipher_bytes[encoded_cipher_size];
-    if (encode_cipher(out_cipher_bytes, encoded_cipher_size, out_cipher) != STS_OK) {
-        return error(err_context, "encode ciphertext");
+    size = get_encoded_re_ciphertext_size(re_ciphertext);
+    char re_ciphertext_bytes[size];
+    if (encode_re_ciphertext(re_ciphertext_bytes, size, re_ciphertext) != STS_OK) {
+        return error(err_context, "encode re-encrypted ciphertext");
     }
 
-    return Py_BuildValue("y#", out_cipher_bytes, encoded_cipher_size);
+    return Py_BuildValue("y#", re_ciphertext_bytes, size);
+}
+
+static PyObject* py_generate_token(PyObject* self, PyObject* args)
+{
+    const char* err_context = "py_generate_token";
+    Py_buffer params_buf, sk_buf, pk_buf;
+    pre_params_t params;
+    pre_sk_t sk;
+    pre_pk_t pk;
+    pre_token_t token;
+    int size;
+
+    if (!PyArg_ParseTuple(args, "y*y*y*", &params_buf, &sk_buf, &pk_buf)) {
+        return error(err_context, "parse arguments");
+    }
+
+    if(decode_params(params, params_buf.buf, (int)params_buf.len) != STS_OK) {
+        return error(err_context, "decode params");
+    }
+    if(decode_sk(sk, sk_buf.buf, (int)sk_buf.len) != STS_OK) {
+        return error(err_context, "decode sk");
+    }
+    if (decode_pk(pk, pk_buf.buf, (int)pk_buf.len) != STS_OK) {
+        return error(err_context, "decode pk");
+    }
+
+    if (pre_generate_token(token, params, sk, pk) != STS_OK) {
+        return error(err_context, "generate re-encryption token");
+    }
+
+    size = get_encoded_token_size(token);
+    char token_bytes[size];
+    if (encode_token(token_bytes, size, token) != STS_OK) {
+        return error(err_context, "encode token");
+    }
+
+    return Py_BuildValue("y#", token_bytes, size);
+}
+
+static PyObject* py_decrypt_re(PyObject* self, PyObject* args)
+{
+    const char* err_context = "py_decrypt_re";
+    Py_buffer params_buf, sk_buf, re_ciphertext_buf;
+    pre_params_t params;
+    pre_sk_t sk;
+    pre_re_ciphertext_t re_ciphertext;
+    pre_plaintext_t plaintext;
+    int size;
+
+    if (!PyArg_ParseTuple(args, "y*y*y*", &params_buf, &sk_buf, &re_ciphertext_buf)) {
+        return error(err_context, "parse arguments");
+    }
+
+    if(decode_params(params, params_buf.buf, (int)params_buf.len) != STS_OK) {
+        return error(err_context, "decode params");
+    }
+    if(decode_sk(sk, sk_buf.buf, (int)sk_buf.len) != STS_OK) {
+        return error(err_context, "decode sk");
+    }
+    if (decode_re_ciphertext(re_ciphertext, re_ciphertext_buf.buf, (int)re_ciphertext_buf.len) != STS_OK) {
+        return error(err_context, "decode re-encrypted ciphertext");
+    }
+
+    if (pre_decrypt_re(plaintext, params, sk, re_ciphertext) != STS_OK) {
+        return error(err_context, "decrypt re-encrypted ciphertext");
+    }
+
+    size = get_encoded_plaintext_size(plaintext);
+    char plaintext_bytes[size];
+    if (encode_plaintext(plaintext_bytes, size, plaintext) != STS_OK) {
+        return error(err_context, "encode plaintext");
+    }
+
+    return Py_BuildValue("y#", plaintext_bytes, size);
 }
 
 static PyObject* py_decrypt(PyObject* self, PyObject* args)
 {
     const char* err_context = "py_decrypt";
-    Py_buffer key_buf, cipher_buf;
-    gt_t msg;
-    pre_keys_t key;
-    pre_ciphertext_t cipher;
-    int encoded_msg_size;
+    Py_buffer params_buf, sk_buf, ciphertext_buf;
+    pre_params_t params;
+    pre_sk_t sk;
+    pre_ciphertext_t ciphertext;
+    pre_plaintext_t plaintext;
+    int size;
 
-    if (!PyArg_ParseTuple(args, "y*y*", &key_buf, &cipher_buf)) {
+    if (!PyArg_ParseTuple(args, "y*y*y*", &params_buf, &sk_buf, &ciphertext_buf)) {
         return error(err_context, "parse arguments");
     }
 
-    if (decode_key(key, key_buf.buf, (int)key_buf.len) != STS_OK) {
-        return error(err_context, "decode key");
+    if(decode_params(params, params_buf.buf, (int)params_buf.len) != STS_OK) {
+        return error(err_context, "decode params");
     }
-    if (decode_cipher(cipher, cipher_buf.buf, (int)cipher_buf.len) != STS_OK) {
+    if(decode_sk(sk, sk_buf.buf, (int)sk_buf.len) != STS_OK) {
+        return error(err_context, "decode sk");
+    }
+    if (decode_ciphertext(ciphertext, ciphertext_buf.buf, (int)ciphertext_buf.len) != STS_OK) {
         return error(err_context, "decode ciphertext");
     }
 
-    if (pre_decrypt(msg, key, cipher) != STS_OK) {
+    if (pre_decrypt(plaintext, params, sk, ciphertext) != STS_OK) {
         return error(err_context, "decrypt ciphertext");
     }
 
-    encoded_msg_size = get_encoded_msg_size(msg);
-    char msg_bytes[encoded_msg_size];
-    if (encode_msg(msg_bytes, encoded_msg_size, msg) != STS_OK) {
-        return error(err_context, "encode message");
+    size = get_encoded_plaintext_size(plaintext);
+    char plaintext_bytes[size];
+    if (encode_plaintext(plaintext_bytes, size, plaintext) != STS_OK) {
+        return error(err_context, "encode plaintext");
     }
 
-    return Py_BuildValue("y#", msg_bytes, encoded_msg_size);
+    return Py_BuildValue("y#", plaintext_bytes, size);
 }
 
 static PyObject* py_encrypt(PyObject* self, PyObject* args)
 {
     const char* err_context = "py_encrypt";
-    Py_buffer key_buf, msg_buf;
-    gt_t msg;
-    pre_keys_t key;
-    pre_ciphertext_t cipher;
-    int encoded_cipher_size;
+    Py_buffer params_buf, pk_buf, plaintext_buf;
+    pre_params_t params;
+    pre_pk_t pk;
+    pre_plaintext_t plaintext;
+    pre_ciphertext_t ciphertext;
+    int size;
 
-    if (!PyArg_ParseTuple(args, "y*y*", &key_buf, &msg_buf)) {
+    if (!PyArg_ParseTuple(args, "y*y*y*", &params_buf, &pk_buf, &plaintext_buf)) {
         return error(err_context, "parse arguments");
     }
 
-    if(decode_key(key, key_buf.buf, (int)key_buf.len) != STS_OK) {
-        return error(err_context, "decode key");
+    if(decode_params(params, params_buf.buf, (int)params_buf.len) != STS_OK) {
+        return error(err_context, "decode params");
     }
-    if (decode_msg(msg, msg_buf.buf, (int)msg_buf.len) != STS_OK) {
-        return error(err_context, "decode message");
+    if(decode_pk(pk, pk_buf.buf, (int)pk_buf.len) != STS_OK) {
+        return error(err_context, "decode pk");
+    }
+    if (decode_plaintext(plaintext, plaintext_buf.buf, (int)plaintext_buf.len) != STS_OK) {
+        return error(err_context, "decode plaintext");
     }
 
-    if (pre_encrypt(cipher, key, msg) != STS_OK) {
-        return error(err_context, "encrypt message");
+    if (pre_encrypt(ciphertext, params, pk, plaintext) != STS_OK) {
+        return error(err_context, "encrypt plaintext");
     }
 
-    encoded_cipher_size = get_encoded_cipher_size(cipher);
-    char cipher_bytes[encoded_cipher_size];
+    size = get_encoded_ciphertext_size(ciphertext);
+    char ciphertext_bytes[size];
 
-    if (encode_cipher(cipher_bytes, encoded_cipher_size, cipher) != STS_OK) {
+    if (encode_ciphertext(ciphertext_bytes, size, ciphertext) != STS_OK) {
         return error(err_context, "encode ciphertext");
     }
 
-    return Py_BuildValue("y#", cipher_bytes, encoded_cipher_size);
+    return Py_BuildValue("y#", ciphertext_bytes, size);
 }
 
-static PyObject* py_generate_key(PyObject* self)
+static PyObject* py_derive_pk(PyObject* self, PyObject* args)
 {
-    const char* err_context = "py_generate_key";
-    pre_keys_t key;
-    int encoded_key_size;
+    const char* err_context = __func__;
+    Py_buffer params_buf, sk_buf;
+    pre_params_t params;
+    pre_sk_t sk;
+    pre_pk_t pk;
+    int size;
 
-    if (pre_generate_keys(key) != STS_OK) {
-        return error(err_context, "generate key");
+    if (!PyArg_ParseTuple(args, "y*y*", &params_buf, &sk_buf)) {
+        return error(err_context, "parse arguments");
     }
 
-    encoded_key_size = get_encoded_key_size(key);
-    char encoded_key[encoded_key_size];
-    if (encode_key(encoded_key, encoded_key_size, key) != STS_OK) {
-        return error(err_context, "encode key");
+    if(decode_params(params, params_buf.buf, (int)params_buf.len) != STS_OK) {
+        return error(err_context, "decode params");
+    }
+    if(decode_sk(sk, sk_buf.buf, (int)sk_buf.len) != STS_OK) {
+        return error(err_context, "decode sk");
     }
 
-    return Py_BuildValue("y#", encoded_key, encoded_key_size);
+    if (pre_derive_pk(pk, params, sk) != STS_OK) {
+        return error(err_context, "generate pk");
+    }
+
+    size = get_encoded_pk_size(pk);
+    char encoded_pk[size];
+    if (encode_pk(encoded_pk, size, pk) != STS_OK) {
+        return error(err_context, "encode pk");
+    }
+
+    return Py_BuildValue("y#", encoded_pk, size);
+}
+
+static PyObject* py_generate_sk(PyObject* self, PyObject* args)
+{
+    const char* err_context = __func__;
+    Py_buffer params_buf;
+    pre_params_t params;
+    pre_sk_t sk;
+    int size;
+
+    if (!PyArg_ParseTuple(args, "y*", &params_buf)) {
+        return error(err_context, "parse arguments");
+    }
+
+    if(decode_params(params, params_buf.buf, (int)params_buf.len) != STS_OK) {
+        return error(err_context, "decode params");
+    }
+
+    if (pre_generate_sk(sk, params) != STS_OK) {
+        return error(err_context, "generate sk");
+    }
+
+    size = get_encoded_sk_size(sk);
+    char encoded_sk[size];
+    if (encode_sk(encoded_sk, size, sk) != STS_OK) {
+        return error(err_context, "encode sk");
+    }
+
+    return Py_BuildValue("y#", encoded_sk, size);
+}
+
+static PyObject* py_generate_params(PyObject* self)
+{
+    const char* err_context = __func__;
+    pre_params_t params;
+    int size;
+
+    if (pre_generate_params(params) != STS_OK) {
+        return error(err_context, "generate params");
+    }
+
+    size = get_encoded_params_size(params);
+    char encoded_params[size];
+    if (encode_params(encoded_params, size, params) != STS_OK) {
+        return error(err_context, "encode params");
+    }
+
+    return Py_BuildValue("y#", encoded_params, size);
 }
 
 static PyMethodDef pre_methods[] = {
-    {"generate_key", (PyCFunction)py_generate_key, METH_NOARGS, NULL},
+    {"generate_params", (PyCFunction)py_generate_params, METH_NOARGS, NULL},
+    {"generate_sk", (PyCFunction)py_generate_sk, METH_VARARGS, NULL},
+    {"derive_pk", (PyCFunction)py_derive_pk, METH_VARARGS, NULL},
     {"encrypt", (PyCFunction)py_encrypt, METH_VARARGS, NULL},
     {"decrypt", (PyCFunction)py_decrypt, METH_VARARGS, NULL},
+    {"decrypt_re", (PyCFunction)py_decrypt_re, METH_VARARGS, NULL},
     {"generate_token", (PyCFunction)py_generate_token, METH_VARARGS, NULL},
     {"apply_token", (PyCFunction)py_apply_token, METH_VARARGS, NULL},
-    {"generate_msg", (PyCFunction)py_generate_msg, METH_NOARGS, NULL},
-    {"msg_to_ints", (PyCFunction)py_msg_to_ints, METH_VARARGS, NULL},
+    {"rand_plaintext", (PyCFunction)py_rand_plaintext, METH_NOARGS, NULL},
+    {"plaintext_to_ints", (PyCFunction)py_plaintext_to_ints, METH_VARARGS, NULL},
     {NULL, NULL, 0, NULL}
 };
 
