@@ -1,10 +1,8 @@
-.PHONY: all test test-c test-python benchmark python install clean
+.PHONY: all test test-python benchmark python install install-python clean
 
-all: python
+all: lib/libpre-afgh-relic.so
 
-test: test-c test-python
-
-test-c:
+test:
 	./bin/test_pre
 
 test-python:
@@ -13,13 +11,15 @@ test-python:
 benchmark:
 	./bin/benchmark_pre
 
-python: install
-	make -C python-wrapper
-	cp python-wrapper/pypre.*.so lib/
-
 install: lib/libpre-afgh-relic.so
 	cp pre/pre-afgh-relic.h /usr/local/include
 	cp lib/* /usr/local/lib
+
+install-python: python
+	cp python-wrapper/pypre.*.so lib/
+
+python:
+	make -C python-wrapper
 
 lib/libpre-afgh-relic.so: pre/CMakeLists.txt $(ls pre/*.{c,h,cpp})
 	cd pre && cmake . && make

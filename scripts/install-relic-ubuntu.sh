@@ -1,9 +1,8 @@
-sudo apt-get install libgmp3-dev
+sudo apt-get update
+sudo apt-get install -y libgmp3-dev cmake
 
-wget https://github.com/relic-toolkit/relic/archive/relic-toolkit-0.4.0.tar.gz
-tar -xvzf relic-toolkit-0.4.0.tar.gz
-cd relic-toolkit-0.4.0.tar.gz
+git clone https://github.com/relic-toolkit/relic
+cd relic
 ./preset/gmp-pbc-128.sh
-cmake .
-make
-sudo make install
+export RELIC_LOC=$(readlink -f .)
+cmake . && make && sudo make install
