@@ -1,6 +1,14 @@
-.PHONY: all python install clean
+.PHONY: all test test-c test-python python install clean
 
 all: python
+
+test: test-c test-python
+
+test-c: lib/libpre-afgh-relic.so
+	./bin/test_pre
+
+test-python: python
+	cd python-wrapper && python3 test.py
 
 python: install
 	make -C python-wrapper
