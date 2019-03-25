@@ -2,94 +2,124 @@ import pypre
 import unittest
 
 class TestGenerationMethods(unittest.TestCase):
-    def test_generate_key(self):
-        self.assertIsNotNone(pypre.generate_key())
-        self.assertNotEqual(pypre.generate_key(), pypre.generate_key())
+    def test_generate_params(self):
+        params = pypre.generate_params()
+        self.assertIsNotNone(params)
+
+    def test_generate_sk(self):
+        params = pypre.generate_params()
+        sk = pypre.generate_sk(params)
+        self.assertIsNotNone(sk)
+        self.assertNotEqual(sk, pypre.generate_sk(params))
+
+    def test_derive_pk(self):
+        params = pypre.generate_params()
+        sk1 = pypre.generate_sk(params)
+        pk1 = pypre.derive_pk(params, sk1)
+        sk2 = pypre.generate_sk(params)
+        pk2 = pypre.derive_pk(params, sk2)
+
+        self.assertIsNotNone(pk1)
+        self.assertEqual(pk1, pypre.derive_pk(params, sk1))
+        self.assertNotEqual(pk1, pk2)
 
     def test_generate_token(self):
-        alice = pypre.generate_key()
-        self.assertIsNotNone(alice)
-        bob = pypre.generate_key()
-        self.assertIsNotNone(bob)
+        params = pypre.generate_params()
+        alice_sk = pypre.generate_sk(params)
+        alice_pk = pypre.derive_pk(params, alice_sk)
+        bob_sk = pypre.generate_sk(params)
+        bob_pk = pypre.derive_pk(params, bob_sk)
 
-        token1 = pypre.generate_token(alice, bob)
+        token1 = pypre.generate_token(params, alice_sk, bob_pk)
         self.assertIsNotNone(token1)
-        token2 = pypre.generate_token(alice, bob)
+        token2 = pypre.generate_token(params, alice_sk, bob_pk)
         self.assertIsNotNone(token2)
-        token3 = pypre.generate_token(bob, alice)
+        token3 = pypre.generate_token(params, bob_sk, alice_pk)
         self.assertIsNotNone(token3)
 
         self.assertEqual(token1, token2)
         self.assertNotEqual(token1, token3)
 
-    def test_generate_msg(self):
-        msg1 = pypre.generate_key()
-        self.assertIsNotNone(msg1)
-        msg2 = pypre.generate_key()
-        self.assertIsNotNone(msg2)
-        self.assertNotEqual(msg1, msg2)
+    def test_rand_plaintext(self):
+        plaintext1 = pypre.rand_plaintext()
+        self.assertIsNotNone(plaintext1)
+        plaintext2 = pypre.rand_plaintext()
+        self.assertIsNotNone(plaintext2)
+        self.assertNotEqual(plaintext1, plaintext2)
 
 class TestEncryptionDecryption(unittest.TestCase):
     def test_encrypt(self):
-        alice = pypre.generate_key()
-        bob = pypre.generate_key()
-        msg1 = pypre.generate_msg()
-        msg2 = pypre.generate_msg()
+        params = pypre.generate_params()
+        alice_sk = pypre.generate_sk(params)
+        alice_pk = pypre.derive_pk(params, alice_sk)
+        bob_sk = pypre.generate_sk(params)
+        bob_pk = pypre.derive_pk(params, bob_sk)
 
-        self.assertIsNotNone(pypre.encrypt(alice, msg1))
-        self.assertNotEqual(pypre.encrypt(alice, msg1), pypre.encrypt(alice, msg1))
-        self.assertNotEqual(pypre.encrypt(alice, msg1), pypre.encrypt(bob, msg1))
-        self.assertNotEqual(pypre.encrypt(alice, msg1), pypre.encrypt(alice, msg2))
+        plaintext1 = pypre.rand_plaintext()
+        plaintext2 = pypre.rand_plaintext()
+
+        self.assertIsNotNone(pypre.encrypt(params, alice_pk, plaintext1))
+        self.assertNotEqual(pypre.encrypt(params, alice_pk, plaintext1), pypre.encrypt(params, alice_pk, plaintext1))
+        self.assertNotEqual(pypre.encrypt(params, alice_pk, plaintext1), pypre.encrypt(params, bob_pk, plaintext1))
+        self.assertNotEqual(pypre.encrypt(params, alice_pk, plaintext1), pypre.encrypt(params, alice_pk, plaintext2))
 
     def test_encrypt_decrypt(self):
-        alice = pypre.generate_key()
-        bob = pypre.generate_key()
-        msg = pypre.generate_msg()
+        params = pypre.generate_params()
+        alice_sk = pypre.generate_sk(params)
+        alice_pk = pypre.derive_pk(params, alice_sk)
+        bob_sk = pypre.generate_sk(params)
+        bob_pk = pypre.derive_pk(params, bob_sk)
 
-        cipher = pypre.encrypt(alice, msg)
+        plaintext = pypre.rand_plaintext()
+
+        cipher = pypre.encrypt(params, alice_pk, plaintext)
         self.assertIsNotNone(cipher)
-        self.assertEqual(msg, pypre.decrypt(alice, cipher))
-        self.assertNotEqual(msg, pypre.decrypt(bob, cipher))
+        self.assertEqual(plaintext, pypre.decrypt(params, alice_sk, cipher))
+        self.assertNotEqual(plaintext, pypre.decrypt(params, bob_sk, cipher))
 
 class TestReEncryption(unittest.TestCase):
     def test_re_encrypt(self):
-        alice = pypre.generate_key()
-        bob = pypre.generate_key()
-        msg1 = pypre.generate_msg()
-        msg2 = pypre.generate_msg()
-        msg3 = pypre.generate_msg()
+        params = pypre.generate_params()
+        alice_sk = pypre.generate_sk(params)
+        alice_pk = pypre.derive_pk(params, alice_sk)
+        bob_sk = pypre.generate_sk(params)
+        bob_pk = pypre.derive_pk(params, bob_sk)
 
-        cipher1 = pypre.encrypt(alice, msg1)
-        self.assertIsNotNone(cipher1)
-        self.assertEqual(msg1, pypre.decrypt(alice, cipher1))
-        self.assertNotEqual(msg1, pypre.decrypt(bob, cipher1))
+        plaintext1 = pypre.rand_plaintext()
+        plaintext2 = pypre.rand_plaintext()
+        plaintext3 = pypre.rand_plaintext()
 
-        token = pypre.generate_token(alice, bob)
-        re_cipher1 = pypre.apply_token(token, cipher1)
-        self.assertEqual(msg1, pypre.decrypt(bob, re_cipher1))
-        self.assertNotEqual(msg1, pypre.decrypt(alice, re_cipher1))
+        cipher = pypre.encrypt(params, alice_pk, plaintext1)
+        self.assertIsNotNone(cipher)
+        self.assertEqual(plaintext1, pypre.decrypt(params, alice_sk, cipher))
+        self.assertNotEqual(plaintext1, pypre.decrypt(params, bob_sk, cipher))
 
-        cipher2 = pypre.encrypt(alice, msg2)
+        token = pypre.generate_token(params, alice_sk, bob_pk)
+        re_cipher1 = pypre.apply_token(token, cipher)
+        self.assertEqual(plaintext1, pypre.decrypt_re(params, bob_sk, re_cipher1))
+        self.assertNotEqual(plaintext1, pypre.decrypt_re(params, alice_sk, re_cipher1))
+
+        cipher2 = pypre.encrypt(params, alice_pk, plaintext2)
         re_cipher2 = pypre.apply_token(token, cipher2)
-        self.assertEqual(msg2, pypre.decrypt(bob, re_cipher2))
-        self.assertNotEqual(msg2, pypre.decrypt(alice, re_cipher2))
+        self.assertEqual(plaintext2, pypre.decrypt_re(params, bob_sk, re_cipher2))
+        self.assertNotEqual(plaintext2, pypre.decrypt_re(params, alice_sk, re_cipher2))
 
-        cipher3 = pypre.encrypt(bob, msg3)
+        cipher3 = pypre.encrypt(params, bob_pk, plaintext3)
         re_cipher3 = pypre.apply_token(token, cipher3)
-        self.assertNotEqual(msg3, pypre.decrypt(bob, re_cipher3))
-        self.assertNotEqual(msg3, pypre.decrypt(alice, re_cipher3))
+        self.assertNotEqual(plaintext3, pypre.decrypt_re(params, bob_sk, re_cipher3))
+        self.assertNotEqual(plaintext3, pypre.decrypt_re(params, alice_sk, re_cipher3))
 
 class TestMessageConversion(unittest.TestCase):
-    def test_msg_to_ints(self):
-        msg1 = pypre.generate_msg()
-        ints1 = pypre.msg_to_ints(msg1)
+    def test_plaintext_to_ints(self):
+        plaintext1 = pypre.rand_plaintext()
+        ints1 = pypre.plaintext_to_ints(plaintext1)
         self.assertIsNotNone(ints1)
-        self.assertEqual(ints1, pypre.msg_to_ints(msg1))
+        self.assertEqual(ints1, pypre.plaintext_to_ints(plaintext1))
 
-        msg2 = pypre.generate_msg()
-        ints2 = pypre.msg_to_ints(msg2)
+        plaintext2 = pypre.rand_plaintext()
+        ints2 = pypre.plaintext_to_ints(plaintext2)
         self.assertIsNotNone(ints2)
-        self.assertEqual(ints2, pypre.msg_to_ints(msg2))
+        self.assertEqual(ints2, pypre.plaintext_to_ints(plaintext2))
 
         self.assertNotEqual(ints1, ints2)
 
