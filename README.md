@@ -1,6 +1,6 @@
 # AFGH Proxy Re-Encryption with RELIC
 
-[![Build status](https://travis-ci.org/lubux/afgh-pre-relic.svg?master)](https://travis-ci.org/lubux/afgh-pre-relic)
+[![Build status](https://travis-ci.org/lubux/afgh-pre-relic.svg?branch=master)](https://travis-ci.org/lubux/afgh-pre-relic)
 
 
 
