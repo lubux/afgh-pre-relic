@@ -1,0 +1,6 @@
+language: C
+
+before_script:
+  - bash scripts/install-relic-ubuntu.sh
+
+script: make && make test
