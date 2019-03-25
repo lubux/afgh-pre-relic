@@ -1,5 +1,9 @@
 # AFGH Proxy Re-Encryption with RELIC
 
+[![Build status](https://travis-ci.org/lubux/afgh-pre-relic.svg?master)](https://travis-ci.org/lubux/afgh-pre-relic)
+
+
+
 Implements the AFGH proxy re-encryption scheme as presented in:
 
 - [link](https://eprint.iacr.org/2005/028.pdf) Ateniese et al. Improved Proxy Reencryption Schemes with Applications to Secure Distributed Storage. In NDSS, 2006.
