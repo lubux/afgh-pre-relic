@@ -40,7 +40,7 @@
 // Helper function to compute 1/a mod m
 int mod_inverse(bn_t res, bn_t a, bn_t m) {
   bn_t tempGcd, temp;
-  int result = STS_OK;
+  int result = RLC_OK;
 
   bn_null(tempGcd);
   bn_null(temp);
@@ -51,11 +51,11 @@ int mod_inverse(bn_t res, bn_t a, bn_t m) {
     bn_new(temp);
 
     bn_gcd_ext(tempGcd, res, temp, a, m);
-    if (bn_sign(res) == BN_NEG) {
+    if (bn_sign(res) == RLC_NEG) {
       bn_add(res, res, m);
     }
   }
-  CATCH_ANY { result = STS_ERR; }
+  CATCH_ANY { result = RLC_ERR; }
   FINALLY {
     bn_free(tempGcd);
     bn_free(temp);
@@ -65,7 +65,7 @@ int mod_inverse(bn_t res, bn_t a, bn_t m) {
 }
 
 int pre_generate_params(pre_params_t params) {
-  int result = STS_OK;
+  int result = RLC_OK;
 
   g1_null(params->g1);
   g2_null(params->g2);
@@ -87,7 +87,7 @@ int pre_generate_params(pre_params_t params) {
     g1_get_ord(params->g1_ord);
   }
   CATCH_ANY {
-    result = STS_ERR;
+    result = RLC_ERR;
 
     g1_null(params->g1);
     g2_null(params->g2);
@@ -99,7 +99,7 @@ int pre_generate_params(pre_params_t params) {
 }
 
 int pre_generate_sk(pre_sk_t sk, pre_params_t params) {
-  int result = STS_OK;
+  int result = RLC_OK;
 
   bn_null(sk->a);
   bn_null(sk->a_inv);
@@ -115,7 +115,7 @@ int pre_generate_sk(pre_sk_t sk, pre_params_t params) {
     mod_inverse(sk->a_inv, sk->a, params->g1_ord);
   }
   CATCH_ANY {
-    result = STS_ERR;
+    result = RLC_ERR;
 
     bn_null(sk->a);
     bn_null(sk->a_inv);
@@ -125,7 +125,7 @@ int pre_generate_sk(pre_sk_t sk, pre_params_t params) {
 }
 
 int pre_derive_pk(pre_pk_t pk, pre_params_t params, pre_sk_t sk) {
-  int result = STS_OK;
+  int result = RLC_OK;
 
   g1_null(pk->pk1);
   g2_null(pk->pk2);
@@ -139,7 +139,7 @@ int pre_derive_pk(pre_pk_t pk, pre_params_t params, pre_sk_t sk) {
     g2_mul_gen(pk->pk2, sk->a);
   }
   CATCH_ANY {
-    result = STS_ERR;
+    result = RLC_ERR;
 
     g1_null(pk->pk1);
     g2_null(pk->pk2);
@@ -150,7 +150,7 @@ int pre_derive_pk(pre_pk_t pk, pre_params_t params, pre_sk_t sk) {
 
 // Helper function to compute the hash of a public key (used for key derivation)
 int hash_pk(bn_t hash, g1_t g1_hash, g2_t g2_hash, pre_pk_t pk) { 
-  int result = STS_ERR;
+  int result = RLC_ERR;
 
   int size;
 
@@ -174,7 +174,7 @@ int hash_pk(bn_t hash, g1_t g1_hash, g2_t g2_hash, pre_pk_t pk) {
     g2_mul_gen(g2_hash, hash);
   }
   CATCH_ANY {
-    result = STS_ERR;
+    result = RLC_ERR;
 
     bn_null(hash_int);
     g1_null(g1_hash);
@@ -188,7 +188,7 @@ int hash_pk(bn_t hash, g1_t g1_hash, g2_t g2_hash, pre_pk_t pk) {
 }
 
 int pre_derive_next_pk(pre_pk_t new_pk, pre_pk_t old_pk) {
-  int result = STS_OK;
+  int result = RLC_OK;
 
   bn_t hash;
   g1_t g1_hash;
@@ -209,7 +209,7 @@ int pre_derive_next_pk(pre_pk_t new_pk, pre_pk_t old_pk) {
     g2_add(new_pk->pk2, old_pk->pk2, g2_hash);
   }
   CATCH_ANY {
-    result = STS_ERR;
+    result = RLC_ERR;
 
     bn_free(hash);
     g1_free(g1_hash);
@@ -228,7 +228,7 @@ int pre_derive_next_pk(pre_pk_t new_pk, pre_pk_t old_pk) {
 
 int pre_derive_next_keypair(pre_sk_t new_sk, pre_pk_t new_pk, 
 		pre_params_t params, pre_sk_t old_sk, pre_pk_t old_pk) {
-  int result = STS_OK;
+  int result = RLC_OK;
 
   bn_t hash;
   g1_t g1_hash;
@@ -257,7 +257,7 @@ int pre_derive_next_keypair(pre_sk_t new_sk, pre_pk_t new_pk,
     mod_inverse(new_sk->a_inv, new_sk->a, params->g1_ord);
   }
   CATCH_ANY {
-    result = STS_ERR;
+    result = RLC_ERR;
 
     bn_free(hash);
     g1_free(g1_hash);
@@ -278,7 +278,7 @@ int pre_derive_next_keypair(pre_sk_t new_sk, pre_pk_t new_pk,
 
 int pre_generate_token(pre_token_t token, pre_params_t params,
 		pre_sk_t sk, pre_pk_t pk) {
-  int result = STS_OK;
+  int result = RLC_OK;
 
   g2_null(token->token);
   TRY {
@@ -293,7 +293,7 @@ int pre_generate_token(pre_token_t token, pre_params_t params,
     g2_mul(token->token, pk->pk2, sk->a_inv);
   }
   CATCH_ANY {
-    result = STS_ERR;
+    result = RLC_ERR;
     g2_null(token->token);
   };
 

@@ -67,7 +67,7 @@ int basic_test() {
 
   pre_decrypt(decrypted, params, alice_sk, cipher);
 
-  if (gt_cmp(plaintext->msg, decrypted->msg) == CMP_EQ) {
+  if (gt_cmp(plaintext->msg, decrypted->msg) == RLC_EQ) {
     std::cout << "Encrypt decrypt OK!" << std::endl;
   } else {
     std::cout << "Encrypt decrypt failed!" << std::endl;
@@ -79,7 +79,7 @@ int basic_test() {
 
   pre_decrypt_re(decrypted, params, bob_sk, re_cipher);
 
-  if (gt_cmp(plaintext->msg, decrypted->msg) == CMP_EQ) {
+  if (gt_cmp(plaintext->msg, decrypted->msg) == RLC_EQ) {
     std::cout << "Re-encrypt decrypt OK!" << std::endl;
   } else {
     std::cout << "Re-encrypt decrypt failed!" << std::endl;
@@ -118,17 +118,17 @@ void encode_decode_test() {
   pre_rand_plaintext(plaintext);
   size = get_encoded_plaintext_size(plaintext);
   buff = (char *)malloc(size);
-  if (!encode_plaintext(buff, size, plaintext) == STS_OK) {
+  if (!encode_plaintext(buff, size, plaintext) == RLC_OK) {
     std::cout << "Message encode error!" << std::endl;
     exit(1);
   }
-  if (!decode_plaintext(plaintext_decoded, buff, size) == STS_OK) {
+  if (!decode_plaintext(plaintext_decoded, buff, size) == RLC_OK) {
     std::cout << "Message decode error!" << std::endl;
     exit(1);
   }
   free(buff);
 
-  if (gt_cmp(plaintext->msg, plaintext_decoded->msg) == CMP_EQ) {
+  if (gt_cmp(plaintext->msg, plaintext_decoded->msg) == RLC_EQ) {
     std::cout << "Decode message OK!" << std::endl;
   } else {
     std::cout << "Decode message Failed!" << std::endl;
@@ -144,19 +144,19 @@ void encode_decode_test() {
 
   size = get_encoded_params_size(params);
   buff = (char *)malloc(size);
-  if (!encode_params(buff, size, params) == STS_OK) {
+  if (!encode_params(buff, size, params) == RLC_OK) {
     std::cout << "Params encode error!" << std::endl;
     exit(1);
   }
-  if (!decode_params(params_decoded, buff, size) == STS_OK) {
+  if (!decode_params(params_decoded, buff, size) == RLC_OK) {
     std::cout << "Params decode error!" << std::endl;
     exit(1);
   }
   free(buff);
 
-  if (gt_cmp(params->Z, params_decoded->Z) == CMP_EQ &&
-      g1_cmp(params->g1, params_decoded->g1) == CMP_EQ &&
-      g2_cmp(params->g2, params_decoded->g2) == CMP_EQ) {
+  if (gt_cmp(params->Z, params_decoded->Z) == RLC_EQ &&
+      g1_cmp(params->g1, params_decoded->g1) == RLC_EQ &&
+      g2_cmp(params->g2, params_decoded->g2) == RLC_EQ) {
     std::cout << "Decode params OK!" << std::endl;
   } else {
     std::cout << "Decode params failed!" << std::endl;
@@ -164,18 +164,18 @@ void encode_decode_test() {
 
   size = get_encoded_sk_size(alice_sk);
   buff = (char *)malloc(size);
-  if (!encode_sk(buff, size, alice_sk) == STS_OK) {
+  if (!encode_sk(buff, size, alice_sk) == RLC_OK) {
     std::cout << "Secret key encode error!" << std::endl;
     exit(1);
   }
-  if (!decode_sk(alice_sk_decoded, buff, size) == STS_OK) {
+  if (!decode_sk(alice_sk_decoded, buff, size) == RLC_OK) {
     std::cout << "Secret key decode error!" << std::endl;
     exit(1);
   }
   free(buff);
 
-  if (bn_cmp(alice_sk->a, alice_sk_decoded->a) == CMP_EQ &&
-      bn_cmp(alice_sk->a_inv, alice_sk_decoded->a_inv) == CMP_EQ) {
+  if (bn_cmp(alice_sk->a, alice_sk_decoded->a) == RLC_EQ &&
+      bn_cmp(alice_sk->a_inv, alice_sk_decoded->a_inv) == RLC_EQ) {
     std::cout << "Secret key OK!" << std::endl;
   } else {
     std::cout << "Secret key failed!" << std::endl;
@@ -183,25 +183,25 @@ void encode_decode_test() {
 
   size = get_encoded_pk_size(alice_pk);
   buff = (char *)malloc(size);
-  if (!encode_pk(buff, size, alice_pk) == STS_OK) {
+  if (!encode_pk(buff, size, alice_pk) == RLC_OK) {
     std::cout << "Public key encode error!" << std::endl;
     exit(1);
   }
-  if (!decode_pk(alice_pk_decoded, buff, size) == STS_OK) {
+  if (!decode_pk(alice_pk_decoded, buff, size) == RLC_OK) {
     std::cout << "Public key decode error!" << std::endl;
     exit(1);
   }
   free(buff);
 
-  if (g1_cmp(alice_pk->pk1, alice_pk_decoded->pk1) == CMP_EQ &&
-      g2_cmp(alice_pk->pk2, alice_pk_decoded->pk2) == CMP_EQ) {
+  if (g1_cmp(alice_pk->pk1, alice_pk_decoded->pk1) == RLC_EQ &&
+      g2_cmp(alice_pk->pk2, alice_pk_decoded->pk2) == RLC_EQ) {
     std::cout << "Decode public key OK!" << std::endl;
   } else {
     std::cout << "Decode public key failed!" << std::endl;
   }
 
-  if (g1_cmp(alice_pk->pk1, alice_pk_decoded->pk1) == CMP_EQ &&
-      g2_cmp(alice_pk->pk2, alice_pk_decoded->pk2) == CMP_EQ) {
+  if (g1_cmp(alice_pk->pk1, alice_pk_decoded->pk1) == RLC_EQ &&
+      g2_cmp(alice_pk->pk2, alice_pk_decoded->pk2) == RLC_EQ) {
     std::cout << "Public key OK!" << std::endl;
   } else {
     std::cout << "Public key failed!" << std::endl;
@@ -209,17 +209,17 @@ void encode_decode_test() {
 
   size = get_encoded_token_size(token_to_bob);
   buff = (char *)malloc(size);
-  if (!encode_token(buff, size, token_to_bob) == STS_OK) {
+  if (!encode_token(buff, size, token_to_bob) == RLC_OK) {
     std::cout << "Token encode error!" << std::endl;
     exit(1);
   }
-  if (!decode_token(token_to_bob_decode, buff, size) == STS_OK) {
+  if (!decode_token(token_to_bob_decode, buff, size) == RLC_OK) {
     std::cout << "Token decode error!" << std::endl;
     exit(1);
   }
   free(buff);
 
-  if (g2_cmp(token_to_bob->token, token_to_bob_decode->token) == CMP_EQ) {
+  if (g2_cmp(token_to_bob->token, token_to_bob_decode->token) == RLC_EQ) {
     std::cout << "Decode token OK!" << std::endl;
   } else {
     std::cout << "Decode token failed!" << std::endl;
@@ -231,8 +231,8 @@ void encode_decode_test() {
   decode_ciphertext(alice_cipher1_decode, buff, size);
   free(buff);
 
-  if (gt_cmp(alice_cipher1->c1, alice_cipher1_decode->c1) == CMP_EQ &&
-      g1_cmp(alice_cipher1->c2, alice_cipher1_decode->c2) == CMP_EQ) {
+  if (gt_cmp(alice_cipher1->c1, alice_cipher1_decode->c1) == RLC_EQ &&
+      g1_cmp(alice_cipher1->c2, alice_cipher1_decode->c2) == RLC_EQ) {
     std::cout << "Decode cipher OK!" << std::endl;
   } else {
     std::cout << "Decode cipher failed!" << std::endl;
@@ -246,14 +246,14 @@ void encode_decode_test() {
   decode_re_ciphertext(bob_re_decode, buff, size);
   free(buff);
 
-  if (gt_cmp(bob_re->c1, bob_re_decode->c1) == CMP_EQ &&
-      gt_cmp(bob_re->c2, bob_re_decode->c2) == CMP_EQ) {
+  if (gt_cmp(bob_re->c1, bob_re_decode->c1) == RLC_EQ &&
+      gt_cmp(bob_re->c2, bob_re_decode->c2) == RLC_EQ) {
     std::cout << "Decode re-encrypted cipher OK!" << std::endl;
   } else {
     std::cout << "Decode re-encrypted cipher failed!" << std::endl;
   }
   pre_decrypt(decrypted, params, alice_sk, alice_cipher1);
-  if (gt_cmp(decrypted->msg, plaintext->msg) == CMP_EQ) {
+  if (gt_cmp(decrypted->msg, plaintext->msg) == RLC_EQ) {
     std::cout << "Decrypt OK!" << std::endl;
   } else {
     std::cout << "Dec Failed!" << std::endl;

@@ -39,7 +39,7 @@
 
 int pre_encrypt(pre_ciphertext_t ciphertext, pre_params_t params,
 		pre_pk_t pk, pre_plaintext_t plaintext) {
-  int result = STS_OK;
+  int result = RLC_OK;
 
   bn_t r;
 
@@ -79,7 +79,7 @@ int pre_encrypt(pre_ciphertext_t ciphertext, pre_params_t params,
     g1_mul(ciphertext->c2, pk->pk1, r);
   }
   CATCH_ANY {
-    result = STS_ERR;
+    result = RLC_ERR;
     gt_null(ciphertext->c1);
     g1_null(ciphertext->c2);
   }
@@ -92,7 +92,7 @@ int pre_encrypt(pre_ciphertext_t ciphertext, pre_params_t params,
 
 int pre_decrypt(pre_plaintext_t plaintext, pre_params_t params,
 		pre_sk_t sk, pre_ciphertext_t ciphertext) {
-  int result = STS_OK;
+  int result = RLC_OK;
 
   g2_t t1;
   gt_t t0;
@@ -126,7 +126,7 @@ int pre_decrypt(pre_plaintext_t plaintext, pre_params_t params,
     gt_inv(t0, plaintext->msg);
     gt_mul(plaintext->msg, ciphertext->c1, t0);
   }
-  CATCH_ANY { result = STS_ERR; }
+  CATCH_ANY { result = RLC_ERR; }
   FINALLY {
     gt_free(t0);
     g1_free(t1);
@@ -137,7 +137,7 @@ int pre_decrypt(pre_plaintext_t plaintext, pre_params_t params,
 
 int pre_decrypt_re(pre_plaintext_t plaintext, pre_params_t params,
 		pre_sk_t sk, pre_re_ciphertext_t ciphertext) {
-  int result = STS_OK;
+  int result = RLC_OK;
 
   gt_t t0;
 
@@ -169,7 +169,7 @@ int pre_decrypt_re(pre_plaintext_t plaintext, pre_params_t params,
     gt_inv(t0, plaintext->msg);
     gt_mul(plaintext->msg, ciphertext->c1, t0);
   }
-  CATCH_ANY { result = STS_ERR; }
+  CATCH_ANY { result = RLC_ERR; }
   FINALLY {
     gt_free(t0);
   }
@@ -179,7 +179,7 @@ int pre_decrypt_re(pre_plaintext_t plaintext, pre_params_t params,
 
 int pre_apply_token(pre_re_ciphertext_t re_ciphertext, pre_token_t token, 
                  pre_ciphertext_t ciphertext) {
-  int result = STS_OK;
+  int result = RLC_OK;
 
   TRY {
     assert(token);
@@ -197,7 +197,7 @@ int pre_apply_token(pre_re_ciphertext_t re_ciphertext, pre_token_t token,
     pc_map(re_ciphertext->c2, ciphertext->c2, token->token);
   }
   CATCH_ANY {
-    result = STS_ERR;
+    result = RLC_ERR;
     gt_null(re_ciphertext->c1);
     gt_null(re_ciphertext->c2);
   }
