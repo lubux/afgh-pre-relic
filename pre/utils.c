@@ -38,27 +38,27 @@
 #include <limits.h>
 
 int pre_init() {
-  if (core_init() != STS_OK) {
+  if (core_init() != RLC_OK) {
     core_clean();
-    return STS_ERR;
+    return RLC_ERR;
   }
 
-  if (pc_param_set_any() != STS_OK) {
+  if (pc_param_set_any() != RLC_OK) {
     THROW(ERR_NO_CURVE);
     core_clean();
-    return STS_ERR;
+    return RLC_ERR;
   }
   pc_param_print();
-  return STS_OK;
+  return RLC_OK;
 }
 
 int pre_cleanup() {
   core_clean();
-  return STS_OK;
+  return RLC_OK;
 }
 
 int pre_rand_plaintext(pre_plaintext_t plaintext) {
-  int result = STS_OK;
+  int result = RLC_OK;
 
   TRY {
     gt_new(plaintext->msg);
@@ -66,14 +66,14 @@ int pre_rand_plaintext(pre_plaintext_t plaintext) {
   }
   CATCH_ANY {
     gt_free(plaintext->msg);
-    result = STS_ERR;
+    result = RLC_ERR;
   }
 
   return result;
 }
 
 int pre_map_to_key(uint8_t *key, int key_len, pre_plaintext_t plaintext) {
-  int result = STS_OK;
+  int result = RLC_OK;
 
   size_t buff_size;
 
@@ -83,13 +83,13 @@ int pre_map_to_key(uint8_t *key, int key_len, pre_plaintext_t plaintext) {
     gt_write_bin(buffer, (int)buff_size, plaintext->msg, 1);
     md_kdf2(key, key_len, buffer, (int)buff_size);
   }
-  CATCH_ANY { result = STS_ERR; };
+  CATCH_ANY { result = RLC_ERR; };
 
   return result;
 }
 
 int pre_clean_params(pre_params_t params) {
-  int result = STS_OK;
+  int result = RLC_OK;
 
   TRY {
     assert(params);
@@ -98,13 +98,13 @@ int pre_clean_params(pre_params_t params) {
     g1_free(params->g1);
     g2_free(params->g2);
   }
-  CATCH_ANY { result = STS_ERR; }
+  CATCH_ANY { result = RLC_ERR; }
 
   return result;
 }
 
 int pre_clean_sk(pre_sk_t sk) {
-  int result = STS_OK;
+  int result = RLC_OK;
 
   TRY {
     assert(sk);
@@ -112,13 +112,13 @@ int pre_clean_sk(pre_sk_t sk) {
     bn_free(sk->sk);
     bn_free(sk->inverse);
   }
-  CATCH_ANY { result = STS_ERR; }
+  CATCH_ANY { result = RLC_ERR; }
 
   return result;
 }
 
 int pre_clean_pk(pre_pk_t pk) {
-  int result = STS_OK;
+  int result = RLC_OK;
 
   TRY {
     assert(pk);
@@ -126,23 +126,23 @@ int pre_clean_pk(pre_pk_t pk) {
     g1_free(pk->pk1);
     g2_free(pk->pk2);
   }
-  CATCH_ANY { result = STS_ERR; }
+  CATCH_ANY { result = RLC_ERR; }
 
   return result;
 }
 
 int pre_clean_token(pre_token_t token) {
   g2_free(token->token);
-  return STS_OK;
+  return RLC_OK;
 }
 
 int pre_clean_plaintext(pre_plaintext_t plaintext) {
   gt_free(plaintext->msg);
-  return STS_OK;
+  return RLC_OK;
 }
 
 int pre_clean_ciphertext(pre_ciphertext_t ciphertext) {
-  int result = STS_OK;
+  int result = RLC_OK;
 
   TRY {
     assert(ciphertext);
@@ -150,13 +150,13 @@ int pre_clean_ciphertext(pre_ciphertext_t ciphertext) {
     gt_free(ciphertext->C1);
     g1_free(ciphertext->C2_G1);
   }
-  CATCH_ANY { result = STS_ERR; }
+  CATCH_ANY { result = RLC_ERR; }
 
   return result;
 }
 
 int pre_clean_re_ciphertext(pre_re_ciphertext_t ciphertext) {
-  int result = STS_OK;
+  int result = RLC_OK;
 
   TRY {
     assert(ciphertext);
@@ -164,7 +164,7 @@ int pre_clean_re_ciphertext(pre_re_ciphertext_t ciphertext) {
     gt_free(ciphertext->C1);
     gt_free(ciphertext->C2_GT);
   }
-  CATCH_ANY { result = STS_ERR; }
+  CATCH_ANY { result = RLC_ERR; }
 
   return result;
 }

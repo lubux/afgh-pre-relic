@@ -14,7 +14,7 @@ The implementation uses the [relic toolkit](https://github.com/relic-toolkit/rel
 ### Install Relic
 The default settings to install relic.
 ```
-./preset/gmp-pbc-128.sh
+./preset/gmp-pbc-bls381.sh
 make 
 sudo make install
 ```
